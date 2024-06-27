@@ -11,7 +11,7 @@ $(TARGET): $(SRC)
 	rustc $< -o $@
 
 compile:
-	cargo run Contract.sol
+	cargo run contracts/Contract.sol
 
 build: 
 	cargo build --release
@@ -23,4 +23,4 @@ t:
 	cargo test
 
 run: 
-	./target/release/solc Contract.sol
+	./target/release/solc contracts/Contract.sol

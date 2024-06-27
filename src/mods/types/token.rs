@@ -619,7 +619,7 @@ fn lex(input: &str) -> Vec<Token> {
     lexems
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum Context {
     Import,
     Interface,

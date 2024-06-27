@@ -2,7 +2,7 @@ use crate::mods::{
     functions::controllers::process_file_contents::process_file_contents,
     types::{
         compiler_errors::{CompilerError, SyntaxError},
-        line_descriptors::{LineDescriptions, StringDescriptor},
+        line_descriptors::{LineDescriptions, StringDescriptor, TokenDescriptor},
         token::{Context, Token, TokenTrait, VecExtension},
     },
 };
@@ -41,7 +41,7 @@ fn seperate_variants(
     let mut context = Context::None;
     for (parent_index, line_desc) in parsable_structure.iter().enumerate() {
         let lexems = line_desc.lex();
-        // println!("{:?}", lexems);
+
         for (index, token) in lexems.data.iter().enumerate() {
             tokens.push(token.clone());
             match token {
@@ -215,6 +215,14 @@ fn seperate_variants(
             });
             tokens.clear();
         }
+    }
+
+    if context != Context::None {
+        CompilerError::SyntaxError(SyntaxError::MissingToken(match context {
+            Context::Contract | Context::Interface | Context::Library => "}",
+            _ => ";",
+        }))
+        .throw_with_file_info("Contract.sol", combined.last().unwrap().line);
     }
 }
 

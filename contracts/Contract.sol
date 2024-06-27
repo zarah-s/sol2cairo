@@ -75,6 +75,6 @@ contract SendEther {
     }
 }
 
-abstract contract Yds {}
-
 import "../IT.sol";
+
+abstract contract Yds {}
