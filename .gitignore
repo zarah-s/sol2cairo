@@ -1,0 +1,4 @@
+/target
+solc
+.env
+test/
