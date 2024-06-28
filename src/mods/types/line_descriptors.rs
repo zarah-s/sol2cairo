@@ -10,7 +10,7 @@ pub trait StringDescriptor {
 }
 
 pub trait TokenDescriptor {
-    fn detokenize(&self) -> LineDescriptions<String>;
+    fn to_string(&self) -> LineDescriptions<String>;
 }
 
 impl StringDescriptor for LineDescriptions<String> {
@@ -23,7 +23,7 @@ impl StringDescriptor for LineDescriptions<String> {
 }
 
 impl TokenDescriptor for LineDescriptions<Vec<Token>> {
-    fn detokenize(&self) -> LineDescriptions<String> {
+    fn to_string(&self) -> LineDescriptions<String> {
         LineDescriptions {
             line: self.line,
             data: self.data.to_string(),

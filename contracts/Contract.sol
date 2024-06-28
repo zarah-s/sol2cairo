@@ -4,6 +4,20 @@ pragma solidity ^0.8.24;
 library Name {
     //
     jane owen;
+
+    function oi() {
+        {}
+    }
+
+    enum Stats {
+        Pending
+    }
+    uint j;
+
+    struct No {
+        string name;
+    }
+    uint256 i;
 }
 
 import {IERC20} from "./IT.sol";
@@ -12,6 +26,8 @@ import "./IT.sol";
 error Oi();
 
 interface IT {
+    error Lib_ERROR();
+
     struct uint2566 {
         string id;
         uint2344 id;
@@ -77,4 +93,10 @@ contract SendEther {
 
 import "../IT.sol";
 
-abstract contract Yds {}
+contract Yds {}
+
+library Lb {
+    error Lib_ERROR();
+
+    function dd() {}
+}

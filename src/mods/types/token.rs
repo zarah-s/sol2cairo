@@ -1,5 +1,10 @@
 use crate::mods::constants::constants::{DATA_TYPES, INTEGER_SIZES, KEYWORDS, SYMBOLS};
 
+use super::{
+    compiler_errors::{CompilerError, SyntaxError},
+    line_descriptors::{LineDescriptions, StringDescriptor},
+};
+
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Identifier(String),
@@ -628,4 +633,52 @@ pub enum Context {
     Contract,
     Error,
     None,
+}
+
+#[derive(PartialEq, Debug)]
+pub enum TerminationType {
+    None,
+    Struct,
+    Enum,
+    Variable,
+    Function,
+    Error,
+}
+
+pub trait ContextFn {
+    fn validate_clash(&self, tokens: &Vec<Token>, lexems: &Option<&LineDescriptions<String>>);
+}
+
+impl ContextFn for Context {
+    fn validate_clash(&self, tokens: &Vec<Token>, lexems: &Option<&LineDescriptions<String>>) {
+        if let Some(_lexems) = lexems {
+            if *self != Self::None && !tokens.is_empty() {
+                CompilerError::SyntaxError(SyntaxError::MissingToken(match self {
+                    Self::Contract | Self::Interface | Self::Library => "}",
+                    _ => ";",
+                }))
+                .throw_with_file_info("Contract.sol", _lexems.lex().line);
+            }
+        } else {
+            CompilerError::InternalError("Unprocessible entity").throw();
+        }
+    }
+}
+
+impl ContextFn for TerminationType {
+    fn validate_clash(&self, tokens: &Vec<Token>, lexems: &Option<&LineDescriptions<String>>) {
+        if let Some(_lexems) = lexems {
+            if *self != Self::None && !tokens.is_empty() {
+                // if *self != Self::Variable {
+                CompilerError::SyntaxError(SyntaxError::MissingToken(match self {
+                    Self::Struct | Self::Enum | Self::Function => "}",
+                    _ => ";",
+                }))
+                .throw_with_file_info("Contract.sol", _lexems.lex().line);
+                // }
+            }
+        } else {
+            CompilerError::InternalError("Unprocessible entity").throw();
+        }
+    }
 }
