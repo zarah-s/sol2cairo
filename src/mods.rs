@@ -1,5 +1,6 @@
 pub mod types {
     pub mod compiler_errors;
+    pub mod context;
     pub mod line_descriptors;
     pub mod token;
 }

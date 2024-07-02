@@ -1,11 +1,10 @@
-use std::io::Bytes;
-
 use crate::mods::{
     functions::controllers::process_file_contents::process_file_contents,
     types::{
         compiler_errors::{CompilerError, SyntaxError},
+        context::{ContextFn, TerminationTypeContext, VariantContext},
         line_descriptors::{LineDescriptions, StringDescriptor, TokenDescriptor},
-        token::{Context, ContextFn, TerminationType, Token, TokenTrait, VecExtension},
+        token::{Token, TokenTrait, VecExtension},
     },
 };
 
@@ -26,9 +25,34 @@ pub async fn compile_source_code(args: Vec<String>) {
     );
 
     for library in libraries {
-        seperate_variant_variants(library)
+        // let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
+        //     seperate_variant_variants(library, false);
+
+        // println!(
+        //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+        //     structs, vars, enums, functions, errors, lib_implementations, lib_header
+        // )
     }
-    // println!("{:#?}", libraries);
+
+    // for contract in contracts {
+    //     let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
+    //         seperate_variant_variants(contract);
+
+    //     println!(
+    //         "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+    //         structs, vars, enums, functions, errors, lib_implementations, lib_header
+    //     )
+    // }
+
+    for interface in interfaces {
+        let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
+            seperate_variant_variants(interface, true);
+
+        println!(
+            "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+            structs, vars, enums, functions, errors, lib_implementations, lib_header
+        )
+    }
 }
 
 /* SEPERATE SOLIDITY FILE VARIANTS LIKE LIBRARIES, INTERFACES, CUSTOM_ERRORS, CONTRACTS */
@@ -45,7 +69,7 @@ fn seperate_variants(
     let mut tokens: Vec<Token> = Vec::new();
 
     let mut combined: Vec<LineDescriptions<Vec<Token>>> = Vec::new();
-    let mut context = Context::None;
+    let mut context = VariantContext::None;
     for (parent_index, line_desc) in parsable_structure.iter().enumerate() {
         let lexems = line_desc.lex();
 
@@ -56,7 +80,7 @@ fn seperate_variants(
                     if parent_index > 0 {
                         validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
                     }
-                    context = Context::Header;
+                    context = VariantContext::Header;
                 }
                 Token::Error => {
                     if opened_braces_count == 0 {
@@ -68,7 +92,7 @@ fn seperate_variants(
                             );
                         }
 
-                        context = Context::Error;
+                        context = VariantContext::Error;
                     }
                 }
                 Token::Abstract => {
@@ -76,21 +100,21 @@ fn seperate_variants(
                         validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
                     }
 
-                    context = Context::Contract;
+                    context = VariantContext::Contract;
                 }
                 Token::Library => {
                     if parent_index > 0 {
                         validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
                     }
 
-                    context = Context::Library;
+                    context = VariantContext::Library;
                 }
                 Token::Import => {
                     if parent_index > 0 {
                         validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
                     }
 
-                    context = Context::Import;
+                    context = VariantContext::Import;
                 }
 
                 Token::Interface => {
@@ -98,22 +122,22 @@ fn seperate_variants(
                         validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
                     }
 
-                    context = Context::Interface;
+                    context = VariantContext::Interface;
                 }
                 Token::Contract => {
-                    if context != Context::None {
+                    if context != VariantContext::None {
                         if !tokens.is_empty() {
                             if tokens.strip_spaces()[0] != Token::Abstract {
                                 validate_clash(context, &tokens, &Some(&lexems.to_string()));
                             }
                         }
                     }
-                    context = Context::Contract;
+                    context = VariantContext::Contract;
                 }
 
                 Token::SemiColon => {
                     if opened_braces_count == 0 {
-                        if !tokens.is_empty() && context != Context::Header {
+                        if !tokens.is_empty() && context != VariantContext::Header {
                             combined.push(LineDescriptions {
                                 data: tokens.clone(),
                                 line: lexems.line,
@@ -121,15 +145,15 @@ fn seperate_variants(
                             tokens.clear();
                         }
                         match context {
-                            Context::Import => {
+                            VariantContext::Import => {
                                 imports.push(combined.clone());
                                 combined.clear();
                             }
-                            Context::Header => {
+                            VariantContext::Header => {
                                 tokens.clear();
                             }
 
-                            Context::Error => {
+                            VariantContext::Error => {
                                 custom_errors.push(combined.clone());
                                 combined.clear();
                             }
@@ -141,7 +165,7 @@ fn seperate_variants(
                                 .throw_with_file_info("Contract.sol", lexems.line);
                             }
                         }
-                        context = Context::None;
+                        context = VariantContext::None;
                     }
                 }
 
@@ -155,7 +179,7 @@ fn seperate_variants(
                             opened_braces_count += 1;
                         }
                     } else {
-                        if !combined.is_empty() && context != Context::None {
+                        if !combined.is_empty() && context != VariantContext::None {
                             let stripped = combined.last().unwrap().data.strip_spaces();
                             let prev = stripped.first();
                             if prev.is_some() && *prev.unwrap() == Token::Import {
@@ -181,22 +205,22 @@ fn seperate_variants(
                                 tokens.clear();
                             }
                             match context {
-                                Context::Library => {
+                                VariantContext::Library => {
                                     libraries.push(combined.clone());
                                     combined.clear();
                                 }
-                                Context::Interface => {
+                                VariantContext::Interface => {
                                     interfaces.push(combined.clone());
                                     combined.clear();
                                 }
 
-                                Context::Contract => {
+                                VariantContext::Contract => {
                                     contracts.push(combined.clone());
                                     combined.clear();
                                 }
                                 _ => {}
                             }
-                            context = Context::None;
+                            context = VariantContext::None;
                         }
                     } else {
                         is_import_brace = false;
@@ -206,7 +230,7 @@ fn seperate_variants(
                 _ => {}
             }
 
-            if let Context::None = context {
+            if let VariantContext::None = context {
                 if !tokens.strip_spaces().is_empty() {
                     CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                         &tokens.strip_spaces()[0].to_string(),
@@ -225,9 +249,9 @@ fn seperate_variants(
         }
     }
 
-    if context != Context::None {
+    if context != VariantContext::None {
         CompilerError::SyntaxError(SyntaxError::MissingToken(match context {
-            Context::Contract | Context::Interface | Context::Library => "}",
+            VariantContext::Contract | VariantContext::Interface | VariantContext::Library => "}",
             _ => ";",
         }))
         .throw_with_file_info("Contract.sol", combined.last().unwrap().line);
@@ -235,7 +259,6 @@ fn seperate_variants(
 }
 
 /* VALIDATES CLASH DUE TO MISSING TOKEN E.G ";" OR "}" */
-
 fn validate_clash<T: ContextFn>(
     context: T,
     tokens: &Vec<Token>,
@@ -244,14 +267,26 @@ fn validate_clash<T: ContextFn>(
     context.validate_clash(tokens, lexems);
 }
 
-fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
+fn seperate_variant_variants(
+    line_desc: Vec<LineDescriptions<Vec<Token>>>,
+    is_interface: bool,
+) -> (
+    Vec<Vec<LineDescriptions<Vec<Token>>>>,
+    Vec<Vec<LineDescriptions<Vec<Token>>>>,
+    Vec<Vec<LineDescriptions<Vec<Token>>>>,
+    Vec<Vec<LineDescriptions<Vec<Token>>>>,
+    Vec<Vec<LineDescriptions<Vec<Token>>>>,
+    Vec<Vec<LineDescriptions<Vec<Token>>>>,
+    Vec<Vec<LineDescriptions<Vec<Token>>>>,
+) {
     let mut opened_braces_count = 0;
-    let mut terminator_type = TerminationType::None;
+    let mut terminator_type = TerminationTypeContext::None;
     let mut structs: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut vars: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut enums: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut functions: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut errors: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
+    let mut lib_implementations: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut lib_header: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut tokens: Vec<Token> = Vec::new();
     let mut combined: Vec<LineDescriptions<Vec<Token>>> = Vec::new();
@@ -269,7 +304,7 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                                 &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
                             )
                         }
-                        TerminationType::Struct
+                        TerminationTypeContext::Struct
                     }
                 }
                 Token::Enum => {
@@ -280,9 +315,9 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                             &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
                         )
                     }
-                    terminator_type = TerminationType::Enum;
+                    terminator_type = TerminationTypeContext::Enum;
                 }
-                Token::Function => {
+                Token::Function | Token::Receive | Token::Fallback | Token::Constructor => {
                     if parent_index > 0 {
                         validate_clash(
                             terminator_type,
@@ -290,7 +325,11 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                             &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
                         )
                     }
-                    terminator_type = TerminationType::Function
+                    if is_interface {
+                        terminator_type = TerminationTypeContext::Variable
+                    } else {
+                        terminator_type = TerminationTypeContext::Function
+                    }
                 }
                 Token::Error => {
                     if parent_index > 0 {
@@ -300,7 +339,17 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                             &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
                         )
                     }
-                    terminator_type = TerminationType::Error
+                    terminator_type = TerminationTypeContext::Error
+                }
+                Token::Using => {
+                    if parent_index > 0 {
+                        validate_clash(
+                            terminator_type,
+                            &tokens,
+                            &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                        )
+                    }
+                    terminator_type = TerminationTypeContext::Implementation
                 }
                 Token::Uint(_)
                 | Token::Int(_)
@@ -309,7 +358,7 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                 | Token::Address
                 | Token::String
                 | Token::Identifier(_) => {
-                    if opened_braces_count == 1 && terminator_type == TerminationType::None {
+                    if opened_braces_count == 1 && terminator_type == TerminationTypeContext::None {
                         if parent_index > 0 {
                             validate_clash(
                                 terminator_type,
@@ -317,29 +366,46 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                                 &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
                             )
                         }
-                        terminator_type = TerminationType::Variable
+                        terminator_type = TerminationTypeContext::Variable
                     }
                 }
+                Token::Mapping => {
+                    if parent_index > 0 {
+                        validate_clash(
+                            terminator_type,
+                            &tokens,
+                            &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                        )
+                    }
+                    terminator_type = TerminationTypeContext::Variable
+                }
+
                 Token::SemiColon => {
                     if opened_braces_count == 1 {
+                        if !tokens.is_empty() {
+                            combined.push(LineDescriptions {
+                                data: tokens.clone(),
+                                line: _line_desc.line,
+                            });
+                            tokens.clear();
+                        }
                         match terminator_type {
-                            TerminationType::Variable => {
-                                combined.push(LineDescriptions {
-                                    data: tokens.clone(),
-                                    line: _line_desc.line,
-                                });
-                                tokens.clear();
-                                vars.push(combined.clone());
-                                combined.clear();
+                            TerminationTypeContext::Variable => {
+                                if is_interface {
+                                    functions.push(combined.clone());
+                                    combined.clear();
+                                } else {
+                                    vars.push(combined.clone());
+                                    combined.clear();
+                                }
                             }
 
-                            TerminationType::Error => {
-                                combined.push(LineDescriptions {
-                                    data: tokens.clone(),
-                                    line: _line_desc.line,
-                                });
-                                tokens.clear();
+                            TerminationTypeContext::Error => {
                                 errors.push(combined.clone());
+                                combined.clear();
+                            }
+                            TerminationTypeContext::Implementation => {
+                                lib_implementations.push(combined.clone());
                                 combined.clear();
                             }
 
@@ -350,7 +416,7 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                                 .throw_with_file_info("Contract.sol", _line_desc.line);
                             }
                         }
-                        terminator_type = TerminationType::None;
+                        terminator_type = TerminationTypeContext::None;
                     }
                 }
                 Token::OpenBraces => {
@@ -367,7 +433,7 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                             combined.clear();
                         }
                     } else {
-                        if !combined.is_empty() && terminator_type != TerminationType::None {
+                        if !combined.is_empty() && terminator_type != TerminationTypeContext::None {
                             opened_braces_count += 1;
                             if opened_braces_count == 1 {
                                 combined.push(LineDescriptions {
@@ -398,22 +464,22 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                             tokens.clear();
                         }
                         match terminator_type {
-                            TerminationType::Struct => {
+                            TerminationTypeContext::Struct => {
                                 structs.push(combined.clone());
                                 combined.clear();
                             }
-                            TerminationType::Enum => {
+                            TerminationTypeContext::Enum => {
                                 enums.push(combined.clone());
                                 combined.clear();
                             }
 
-                            TerminationType::Function => {
+                            TerminationTypeContext::Function => {
                                 functions.push(combined.clone());
                                 combined.clear();
                             }
                             _ => {}
                         }
-                        terminator_type = TerminationType::None;
+                        terminator_type = TerminationTypeContext::None;
                     } else if opened_braces_count == 0 {
                         if tokens.len() == 1 {
                             tokens.clear();
@@ -426,15 +492,25 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
                 _ => {}
             }
 
-            if let TerminationType::None = terminator_type {
+            if let TerminationTypeContext::None = terminator_type {
                 if !tokens.strip_spaces().is_empty() {
                     let first_token = tokens.first();
-                    if first_token.is_none() || *first_token.unwrap() != Token::Library {
-                        CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
-                            &tokens.strip_spaces()[0].to_string(),
-                        ))
-                        .throw_with_file_info("Contract.sol", _line_desc.line);
-                    } else {
+                    match first_token {
+                        None => {
+                            CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
+                                &tokens.strip_spaces()[0].to_string(),
+                            ))
+                            .throw_with_file_info("Contract.sol", _line_desc.line);
+                        }
+                        Some(initial) => match initial {
+                            Token::Library | Token::Contract | Token::Interface => {}
+                            _ => {
+                                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
+                                    &tokens.strip_spaces()[0].to_string(),
+                                ))
+                                .throw_with_file_info("Contract.sol", _line_desc.line);
+                            }
+                        },
                     }
                 }
             }
@@ -448,13 +524,24 @@ fn seperate_variant_variants(line_desc: Vec<LineDescriptions<Vec<Token>>>) {
         }
     }
 
-    if terminator_type != TerminationType::None {
+    assert!(opened_braces_count == 0, "Missing {}", "}");
+
+    if terminator_type != TerminationTypeContext::None {
         CompilerError::SyntaxError(SyntaxError::MissingToken(match terminator_type {
-            TerminationType::Struct | TerminationType::Function | TerminationType::Enum => "}",
+            TerminationTypeContext::Struct
+            | TerminationTypeContext::Function
+            | TerminationTypeContext::Enum => "}",
             _ => ";",
         }))
         .throw_with_file_info("Contract.sol", combined.last().unwrap().line);
     }
-
-    println!("{:?}", functions);
+    (
+        structs,
+        vars,
+        enums,
+        functions,
+        errors,
+        lib_implementations,
+        lib_header,
+    )
 }
