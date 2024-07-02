@@ -525,6 +525,7 @@ fn lex(input: &str) -> Vec<Token> {
                 } else {
                     combined_strings.push(combined_char.trim().to_string());
                     combined_char.clear();
+                    combined_strings.push(character.to_string());
                 }
             } else {
                 let chars = input.trim().chars().collect::<Vec<_>>();

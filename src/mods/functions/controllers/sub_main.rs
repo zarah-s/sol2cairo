@@ -8,6 +8,8 @@ use crate::mods::{
     },
 };
 
+use super::parser::parse_structs;
+
 pub async fn compile_source_code(args: Vec<String>) {
     let parsable_structure = process_file_contents(args).await;
     let mut imports: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
@@ -25,8 +27,9 @@ pub async fn compile_source_code(args: Vec<String>) {
     );
 
     for library in libraries {
-        // let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
-        //     seperate_variant_variants(library, false);
+        let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
+            seperate_variant_variants(library, false);
+        parse_structs(structs);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
@@ -45,13 +48,13 @@ pub async fn compile_source_code(args: Vec<String>) {
     // }
 
     for interface in interfaces {
-        let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
-            seperate_variant_variants(interface, true);
+        // let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
+        //     seperate_variant_variants(interface, true);
 
-        println!(
-            "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
-            structs, vars, enums, functions, errors, lib_implementations, lib_header
-        )
+        // println!(
+        //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
+        //     structs, vars, enums, functions, errors, lib_implementations, lib_header
+        // )
     }
 }
 
@@ -67,7 +70,6 @@ fn seperate_variants(
     let mut is_import_brace = false;
     let mut opened_braces_count = 0;
     let mut tokens: Vec<Token> = Vec::new();
-
     let mut combined: Vec<LineDescriptions<Vec<Token>>> = Vec::new();
     let mut context = VariantContext::None;
     for (parent_index, line_desc) in parsable_structure.iter().enumerate() {
@@ -78,7 +80,12 @@ fn seperate_variants(
             match token {
                 Token::Pragma => {
                     if parent_index > 0 {
-                        validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
+                        validate_clash(
+                            context,
+                            &tokens,
+                            &parsable_structure.get(parent_index - 1),
+                            None,
+                        );
                     }
                     context = VariantContext::Header;
                 }
@@ -89,6 +96,7 @@ fn seperate_variants(
                                 context,
                                 &tokens,
                                 &parsable_structure.get(parent_index - 1),
+                                None,
                             );
                         }
 
@@ -97,21 +105,36 @@ fn seperate_variants(
                 }
                 Token::Abstract => {
                     if parent_index > 0 {
-                        validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
+                        validate_clash(
+                            context,
+                            &tokens,
+                            &parsable_structure.get(parent_index - 1),
+                            None,
+                        );
                     }
 
                     context = VariantContext::Contract;
                 }
                 Token::Library => {
                     if parent_index > 0 {
-                        validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
+                        validate_clash(
+                            context,
+                            &tokens,
+                            &parsable_structure.get(parent_index - 1),
+                            None,
+                        );
                     }
 
                     context = VariantContext::Library;
                 }
                 Token::Import => {
                     if parent_index > 0 {
-                        validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
+                        validate_clash(
+                            context,
+                            &tokens,
+                            &parsable_structure.get(parent_index - 1),
+                            None,
+                        );
                     }
 
                     context = VariantContext::Import;
@@ -119,7 +142,12 @@ fn seperate_variants(
 
                 Token::Interface => {
                     if parent_index > 0 {
-                        validate_clash(context, &tokens, &parsable_structure.get(parent_index - 1));
+                        validate_clash(
+                            context,
+                            &tokens,
+                            &parsable_structure.get(parent_index - 1),
+                            None,
+                        );
                     }
 
                     context = VariantContext::Interface;
@@ -128,7 +156,7 @@ fn seperate_variants(
                     if context != VariantContext::None {
                         if !tokens.is_empty() {
                             if tokens.strip_spaces()[0] != Token::Abstract {
-                                validate_clash(context, &tokens, &Some(&lexems.to_string()));
+                                validate_clash(context, &tokens, &Some(&lexems.to_string()), None);
                             }
                         }
                     }
@@ -263,8 +291,9 @@ fn validate_clash<T: ContextFn>(
     context: T,
     tokens: &Vec<Token>,
     lexems: &Option<&LineDescriptions<String>>,
+    opened_braces_count: Option<i32>,
 ) {
-    context.validate_clash(tokens, lexems);
+    context.validate_clash(tokens, lexems, opened_braces_count);
 }
 
 fn seperate_variant_variants(
@@ -296,16 +325,15 @@ fn seperate_variant_variants(
             tokens.push(token.clone());
             match token {
                 Token::Struct => {
-                    terminator_type = {
-                        if parent_index > 0 {
-                            validate_clash(
-                                terminator_type,
-                                &tokens,
-                                &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
-                            )
-                        }
-                        TerminationTypeContext::Struct
+                    if parent_index > 0 {
+                        validate_clash(
+                            terminator_type,
+                            &tokens,
+                            &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                            Some(opened_braces_count),
+                        )
                     }
+                    terminator_type = TerminationTypeContext::Struct
                 }
                 Token::Enum => {
                     if parent_index > 0 {
@@ -313,6 +341,7 @@ fn seperate_variant_variants(
                             terminator_type,
                             &tokens,
                             &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                            Some(opened_braces_count),
                         )
                     }
                     terminator_type = TerminationTypeContext::Enum;
@@ -323,6 +352,7 @@ fn seperate_variant_variants(
                             terminator_type,
                             &tokens,
                             &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                            Some(opened_braces_count),
                         )
                     }
                     if is_interface {
@@ -337,6 +367,7 @@ fn seperate_variant_variants(
                             terminator_type,
                             &tokens,
                             &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                            Some(opened_braces_count),
                         )
                     }
                     terminator_type = TerminationTypeContext::Error
@@ -347,6 +378,7 @@ fn seperate_variant_variants(
                             terminator_type,
                             &tokens,
                             &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                            Some(opened_braces_count),
                         )
                     }
                     terminator_type = TerminationTypeContext::Implementation
@@ -364,6 +396,7 @@ fn seperate_variant_variants(
                                 terminator_type,
                                 &tokens,
                                 &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                                Some(opened_braces_count),
                             )
                         }
                         terminator_type = TerminationTypeContext::Variable
@@ -375,6 +408,7 @@ fn seperate_variant_variants(
                             terminator_type,
                             &tokens,
                             &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                            Some(opened_braces_count),
                         )
                     }
                     terminator_type = TerminationTypeContext::Variable

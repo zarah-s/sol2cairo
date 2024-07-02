@@ -3,6 +3,10 @@ pub mod types {
     pub mod context;
     pub mod line_descriptors;
     pub mod token;
+    pub mod identifiers {
+        pub mod mapping;
+        pub mod r#struct;
+    }
 }
 
 pub mod constants {

@@ -3,10 +3,9 @@ pragma solidity ^0.8.24;
 
 library Name {
     //
-    jane owen
-     = "sdf";
+ 
 
-    uint j;
+    //uint j;
 
     function oi() {
         {}
@@ -16,24 +15,23 @@ library Name {
         Pending
     }
 
-    struct No_2sd {
-        lib.dsd name;
-    
-   uint256 i;
+    struct No {
+        string name;
     }
+    //uint256 i;
     }
 
 
-import {IERC20} from "./IT.sol";
-import "./IT.sol";
+//import {IERC20} from "./IT.sol";
+//import "./IT.sol";
 
 error Oi();
 interface IT {
     error Lib_ERROR();
 
     struct uint2566 {
-        string id;
-        uint2344 id;
+        string idd;
+        uint id;
     }
 
     function oi() external view
@@ -42,7 +40,7 @@ interface IT {
 
 contract ReceiveEther {
     string sdf = "This is /*not*/ a comment";
-    mapping(uint => address) name
+    mapping(uint => address) name;
 
     uint256[] i;
     /*sdfsdf*/ uint j;
@@ -95,12 +93,12 @@ contract SendEther {
     }
 }
 
-import "../IT.sol";
+//import "../IT.sol";
 
 contract Yds {}
 
 library Lb {
-    using Oi for uint;
+   // using Oi for uint;
     error Lib_ERROR();
 
     function dd() {}
