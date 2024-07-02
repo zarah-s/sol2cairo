@@ -27,11 +27,21 @@ pub enum TerminationTypeContext {
 }
 
 pub trait ContextFn {
-    fn validate_clash(&self, tokens: &Vec<Token>, lexems: &Option<&LineDescriptions<String>>);
+    fn validate_clash(
+        &self,
+        tokens: &Vec<Token>,
+        lexems: &Option<&LineDescriptions<String>>,
+        opened_braces_count: Option<i32>,
+    );
 }
 
 impl ContextFn for VariantContext {
-    fn validate_clash(&self, tokens: &Vec<Token>, lexems: &Option<&LineDescriptions<String>>) {
+    fn validate_clash(
+        &self,
+        tokens: &Vec<Token>,
+        lexems: &Option<&LineDescriptions<String>>,
+        _: Option<i32>,
+    ) {
         if let Some(_lexems) = lexems {
             if *self != Self::None && !tokens.is_empty() {
                 CompilerError::SyntaxError(SyntaxError::MissingToken(match self {
@@ -47,8 +57,17 @@ impl ContextFn for VariantContext {
 }
 
 impl ContextFn for TerminationTypeContext {
-    fn validate_clash(&self, tokens: &Vec<Token>, lexems: &Option<&LineDescriptions<String>>) {
+    fn validate_clash(
+        &self,
+        tokens: &Vec<Token>,
+        lexems: &Option<&LineDescriptions<String>>,
+        opened_braces_count: Option<i32>,
+    ) {
         if let Some(_lexems) = lexems {
+            if opened_braces_count.unwrap() != 1 {
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info("Contract.sol", _lexems.line);
+            }
             if *self != Self::None && !tokens.is_empty() {
                 CompilerError::SyntaxError(SyntaxError::MissingToken(match self {
                     Self::Struct | Self::Enum | Self::Function => "}",
