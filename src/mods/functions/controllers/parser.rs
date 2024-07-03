@@ -1,16 +1,21 @@
 use regex::Regex;
 
-use crate::mods::types::{
-    compiler_errors::{CompilerError, SyntaxError},
-    line_descriptors::LineDescriptions,
-    token::{Token, TokenTrait, VecExtension},
+use crate::mods::{
+    functions::helpers::global::extract_data_type_from_token,
+    types::{
+        compiler_errors::{CompilerError, SyntaxError},
+        identifiers::{
+            mapping::{Mapping, MappingIdentifier, MappingValue, ReturnValue},
+            r#struct::Variant,
+        },
+        line_descriptors::LineDescriptions,
+        token::{Token, TokenTrait, VecExtension},
+    },
 };
 
 pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
     for lexem in lexems {
         let mut struct_identifier = String::new();
-        // println!("{:?}", lexem);
-
         /* SANITY CHECKS */
         {
             if lexem.is_empty() {
@@ -93,7 +98,6 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
         }
 
         {
-            let mut state = State::Terminated;
             let mut skipped_count = 0;
             let mut combined: Vec<Token> = Vec::new();
             for lex in lexem {
@@ -105,8 +109,6 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
                     match token {
                         Token::SemiColon => {
                             combined.push(token);
-                            state = State::Terminated;
-
                             process_variants(&combined).unwrap_or_else(
                                 |(err, err_type): (String, ErrType)| match err_type {
                                     ErrType::Missing => {
@@ -144,9 +146,6 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
                         }
 
                         _ => {
-                            if let State::Terminated = state {
-                                state = State::Initialized;
-                            }
                             combined.push(token);
                         }
                     }
@@ -156,15 +155,235 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
     }
 }
 
+#[derive(Debug)]
 enum State {
-    Initialized,
-    Terminated,
+    MappingIdentity,
+    OpenParenthesisIdentifier,
+    CloseParenthesisIdentifier,
+    Key,
+    Assign,
+    Gt,
+    Value,
+    None,
 }
 
-fn process_variants<'a>(combined: &Vec<Token>) -> Result<(), (String, ErrType)> {
+fn process_variants(combined: &Vec<Token>) -> Result<(), (String, ErrType)> {
     match &combined[0] {
         Token::Mapping => {
-            return Ok(());
+            let mut state = State::None;
+            let mut pad = 0;
+            let mut mapping = Mapping::new();
+            let mut nested_count = 0;
+
+            //
+            let mut is_array = false;
+            let mut r#type = String::new();
+            let mut size: Option<String> = None;
+            let mut name = String::new();
+            //
+            for (index, n) in combined.iter().enumerate() {
+                if pad > index {
+                    continue;
+                }
+                match n {
+                    Token::Mapping => {
+                        nested_count += 1;
+                        state = State::MappingIdentity;
+                    }
+                    Token::OpenParenthesis => {
+                        if let State::MappingIdentity = state {
+                            state = State::OpenParenthesisIdentifier;
+                        } else {
+                            return Err((
+                                format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                                ErrType::Syntax,
+                            ));
+                        }
+                    }
+                    Token::CloseParenthesis => {
+                        nested_count -= 1;
+                        if let State::Value = state {
+                            state = State::CloseParenthesisIdentifier;
+                        } else if let State::CloseParenthesisIdentifier = state {
+                        } else {
+                            return Err((
+                                format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                                ErrType::Syntax,
+                            ));
+                        }
+                    }
+                    Token::Equals => {
+                        if let State::Key = state {
+                            state = State::Assign;
+                        } else {
+                            return Err((
+                                format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                                ErrType::Syntax,
+                            ));
+                        }
+                    }
+                    Token::Gt => {
+                        if let State::Assign = state {
+                            state = State::Gt;
+                        } else {
+                            return Err((
+                                format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                                ErrType::Syntax,
+                            ));
+                        }
+                    }
+                    Token::Uint(_)
+                    | Token::Int(_)
+                    | Token::Identifier(_)
+                    | Token::Bool
+                    | Token::Bytes(_)
+                    | Token::Address
+                    | Token::String => {
+                        if let State::OpenParenthesisIdentifier = state {
+                            mapping.insert(Some(n.to_string()), None)?;
+                            state = State::Key;
+                        } else if let State::Gt = state {
+                            let peek_next = combined.iter().collect::<Vec<_>>();
+
+                            if let Some(_next) = peek_next.get(index + 4) {
+                                if combined[index..index + 4].contains(&Token::OpenSquareBracket) {
+                                    is_array = true;
+                                    if combined[index..index + 4].contains(&Token::Dot) {
+                                        if let Token::OpenSquareBracket = combined[index + 3] {
+                                            let backward_slice = &combined[index..index + 3];
+                                            process_type(backward_slice, &mut r#type, combined)?;
+                                            let sliced = &combined[index + 4..];
+
+                                            let size_definition = sliced.iter().position(|pred| {
+                                                *pred == Token::CloseSquareBracket
+                                            });
+
+                                            if let Some(_sz) = size_definition {
+                                                pad = _sz + index + 5;
+                                                size = process_size(combined, index + 3, _sz)?;
+                                            } else {
+                                                return Err((
+                                                    format!("] \"{}\"", combined.to_string()),
+                                                    ErrType::Missing,
+                                                ));
+                                            }
+                                        } else {
+                                            return Err((
+                                                format!(
+                                                    "Invalid variant declaration \"{}\"",
+                                                    combined.to_string()
+                                                ),
+                                                ErrType::Syntax,
+                                            ));
+                                        }
+                                    } else {
+                                        if let Token::OpenSquareBracket = combined[index + 1] {
+                                            let backward_slice = &combined[index..index + 1];
+                                            process_type(backward_slice, &mut r#type, combined)?;
+                                            let sliced = &combined[index + 2..];
+                                            let size_definition = sliced.iter().position(|pred| {
+                                                *pred == Token::CloseSquareBracket
+                                            });
+
+                                            if let Some(_sz) = size_definition {
+                                                size = process_size(combined, index + 1, _sz)?;
+                                                pad = _sz + index + 3;
+                                            } else {
+                                                return Err((
+                                                    format!("] \"{}\"", combined.to_string()),
+                                                    ErrType::Missing,
+                                                ));
+                                            }
+                                        } else {
+                                            return Err((
+                                                format!(
+                                                    "Invalid variant declaration \"{}\"",
+                                                    combined.to_string()
+                                                ),
+                                                ErrType::Syntax,
+                                            ));
+                                        }
+                                    }
+                                } else {
+                                    if combined[index..index + 3].contains(&Token::Dot) {
+                                        if let Token::Dot = combined[index + 1] {
+                                            let backward_slice = &combined[index..index + 3];
+                                            process_type(backward_slice, &mut r#type, combined)?;
+                                            pad = index + 3;
+                                        } else {
+                                            return Err((
+                                                format!(
+                                                    "Invalid variant declaration \"{}\"",
+                                                    combined.to_string()
+                                                ),
+                                                ErrType::Syntax,
+                                            ));
+                                        }
+                                    } else {
+                                        let backward_slice = &combined[index..index + 1];
+                                        process_type(backward_slice, &mut r#type, combined)?;
+                                    }
+                                }
+                            } else {
+                                return Err((
+                                    format!(
+                                        "Invalid variant declaration \"{}\"",
+                                        combined.to_string()
+                                    ),
+                                    ErrType::Syntax,
+                                ));
+                            }
+
+                            state = State::Value;
+
+                            mapping.insert(
+                                None,
+                                Some(MappingValue::Raw(ReturnValue {
+                                    r#type: r#type.clone(),
+                                    size: size.clone(),
+                                    is_array,
+                                })),
+                            )?
+                        } else if let State::CloseParenthesisIdentifier = state {
+                            if nested_count == 0 {
+                                if let Token::Identifier(identifier) = n {
+                                    name.push_str(identifier)
+                                } else {
+                                    return Err((
+                                        format!(
+                                            "Expecting identifier but found \"{}\"",
+                                            n.to_string()
+                                        ),
+                                        ErrType::Syntax,
+                                    ));
+                                }
+                            } else {
+                                return Err((
+                                    format!("Expecting identifier but found \"{}\"", n.to_string()),
+                                    ErrType::Syntax,
+                                ));
+                            }
+                        } else {
+                            return Err((
+                                format!(
+                                    "Invalid ddvariant declaration \"{}\"",
+                                    combined.to_string()
+                                ),
+                                ErrType::Syntax,
+                            ));
+                        }
+                    }
+                    Token::Space | Token::SemiColon => {}
+                    _ => {
+                        return Err((
+                            format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                            ErrType::Syntax,
+                        ))
+                    }
+                }
+            }
+
+            println!("{:?}", mapping);
         }
         Token::Uint(_)
         | Token::Int(_)
@@ -191,27 +410,7 @@ fn process_variants<'a>(combined: &Vec<Token>) -> Result<(), (String, ErrType)> 
                     .iter()
                     .position(|pred| *pred == Token::CloseSquareBracket);
                 if let Some(_close_bracket_index) = close_bracket_index {
-                    let size_definition = &combined[_bracket_index + 1..][..*_close_bracket_index];
-                    if !size_definition.to_vec().strip_spaces().is_empty() {
-                        for size_ in size_definition {
-                            match size_ {
-                                Token::Identifier(_)
-                                | Token::Multiply
-                                | Token::Modulu
-                                | Token::Plus
-                                | Token::Minus
-                                | Token::Divide => {}
-                                _token => {
-                                    return Err((
-                                        format!("{} ", _token.to_string()),
-                                        ErrType::Unexpected,
-                                    ));
-                                }
-                            }
-                        }
-
-                        size = Some(size_definition.to_vec().to_string())
-                    }
+                    size = process_size(combined, _bracket_index, *_close_bracket_index)?;
                 } else {
                     return Err((format!("] \"{}\"", combined.to_string()), ErrType::Missing));
                 }
@@ -235,6 +434,15 @@ fn process_variants<'a>(combined: &Vec<Token>) -> Result<(), (String, ErrType)> 
                     process_name(name_definition, &mut name, combined)?;
                 }
             }
+
+            let variant = Variant {
+                is_array,
+                name,
+                size,
+                r#type,
+            };
+
+            println!("{:?}", variant);
         }
         _other => {
             return Err((
@@ -246,10 +454,48 @@ fn process_variants<'a>(combined: &Vec<Token>) -> Result<(), (String, ErrType)> 
     return Ok(());
 }
 
-enum ErrType {
+pub enum ErrType {
     Missing,
     Syntax,
     Unexpected,
+}
+
+fn process_size(
+    combined: &Vec<Token>,
+    open_bracket_index: usize,
+    close_bracket_index: usize,
+) -> Result<Option<String>, (String, ErrType)> {
+    let size_definition = &combined[open_bracket_index + 1..][..close_bracket_index];
+    if !size_definition.to_vec().strip_spaces().is_empty() {
+        let mut opened_paren_count = 0;
+        for size_ in size_definition.to_vec().strip_spaces() {
+            match size_ {
+                Token::Identifier(_)
+                | Token::Multiply
+                | Token::Modulu
+                | Token::Plus
+                | Token::Minus
+                | Token::Divide => {}
+                Token::OpenParenthesis => opened_paren_count += 1,
+                Token::CloseParenthesis => opened_paren_count -= 1,
+                _token => {
+                    return Err((format!("{} ", _token.to_string()), ErrType::Unexpected));
+                }
+            }
+        }
+
+        if opened_paren_count != 0 {
+            if opened_paren_count < 0 {
+                return Err((format!(")",), ErrType::Unexpected));
+            } else {
+                return Err((format!(")",), ErrType::Missing));
+            }
+        }
+
+        return Ok(Some(size_definition.to_vec().to_string()));
+    }
+
+    return Ok(None);
 }
 
 fn process_type(
@@ -311,6 +557,7 @@ fn process_name(
     name: &mut String,
     combined: &Vec<Token>,
 ) -> Result<(), (String, ErrType)> {
+    // println!("{:?}", name_definition);
     if name_definition.len() == 2 {
         if let Token::Identifier(name_) = name_definition.first().unwrap() {
             let variable_name_pattern = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();

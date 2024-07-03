@@ -345,7 +345,7 @@ fn detokenize(input: &Token) -> String {
 fn tokenize(input: &str) -> Token {
     match input {
         "revert" => Token::Revert,
-        " " => Token::Space,
+        " " | "" => Token::Space,
         "emit" => Token::Emit,
         "pragma" => Token::Pragma,
         "import" => Token::Import,

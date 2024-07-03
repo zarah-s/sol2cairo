@@ -74,7 +74,6 @@ fn seperate_variants(
     let mut context = VariantContext::None;
     for (parent_index, line_desc) in parsable_structure.iter().enumerate() {
         let lexems = line_desc.lex();
-
         for (index, token) in lexems.data.iter().enumerate() {
             tokens.push(token.clone());
             match token {
@@ -403,15 +402,17 @@ fn seperate_variant_variants(
                     }
                 }
                 Token::Mapping => {
-                    if parent_index > 0 {
-                        validate_clash(
-                            terminator_type,
-                            &tokens,
-                            &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
-                            Some(opened_braces_count),
-                        )
+                    if opened_braces_count == 1 {
+                        if parent_index > 0 {
+                            validate_clash(
+                                terminator_type,
+                                &tokens,
+                                &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                                Some(opened_braces_count),
+                            )
+                        }
+                        terminator_type = TerminationTypeContext::Variable
                     }
-                    terminator_type = TerminationTypeContext::Variable
                 }
 
                 Token::SemiColon => {
@@ -569,6 +570,7 @@ fn seperate_variant_variants(
         }))
         .throw_with_file_info("Contract.sol", combined.last().unwrap().line);
     }
+
     (
         structs,
         vars,

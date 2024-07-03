@@ -17,9 +17,9 @@ library Name {
     }
 
     struct No_2sd {
-        lib.dsd name;
-    
-   uint256 i;
+        lib.dsd[200e18*2/4-1+8] name;
+    mapping(uint => mapping(uint => address[20*100/(15)])) nad;
+   uint256[] name;
     }
     }
 

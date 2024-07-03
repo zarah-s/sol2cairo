@@ -15,6 +15,7 @@ pub enum StructType {
     Variant(Variant),
 }
 
+#[derive(Debug)]
 pub struct Variant {
     pub r#type: String,
     pub name: String,
