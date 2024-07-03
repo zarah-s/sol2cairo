@@ -21,6 +21,12 @@ pub enum SyntaxError<'a> {
     SyntaxError(&'a str),
 }
 
+pub enum ErrType {
+    Missing,
+    Syntax,
+    Unexpected,
+}
+
 #[derive(Debug)]
 pub enum SemanticError<'a> {
     UndefinedVariable(&'a str),

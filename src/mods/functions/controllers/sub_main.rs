@@ -3,12 +3,11 @@ use crate::mods::{
     types::{
         compiler_errors::{CompilerError, SyntaxError},
         context::{ContextFn, TerminationTypeContext, VariantContext},
+        identifiers::r#struct::parse_structs,
         line_descriptors::{LineDescriptions, StringDescriptor, TokenDescriptor},
         token::{Token, TokenTrait, VecExtension},
     },
 };
-
-use super::parser::parse_structs;
 
 pub async fn compile_source_code(args: Vec<String>) {
     let parsable_structure = process_file_contents(args).await;
@@ -29,7 +28,8 @@ pub async fn compile_source_code(args: Vec<String>) {
     for library in libraries {
         let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
             seperate_variant_variants(library, false);
-        parse_structs(structs);
+        let parsed_structs = parse_structs(structs);
+        println!("{:#?}", parsed_structs);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",

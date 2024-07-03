@@ -21,6 +21,10 @@ library Name {
     mapping(uint => mapping(uint => address[20*100/(15)])) nad;
    uint256[] name;
     }
+
+    struct Structure{
+        
+    }
     }
 
 
