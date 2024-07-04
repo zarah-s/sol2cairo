@@ -2,7 +2,7 @@ use crate::mods::{
     functions::helpers::global::{extract_data_type_from_token, process_size, process_type},
     types::{
         compiler_errors::ErrType,
-        token::{StringExtension, Token, TokenTrait, VecExtension},
+        token::{Token, TokenTrait, VecExtension, Visibility},
     },
 };
 
@@ -19,9 +19,23 @@ enum MappingState {
 }
 
 #[derive(Debug)]
-pub struct MappingIdentifier {
+pub struct MappingHeader {
     pub identifier: String,
-    pub visibility: Option<Token>,
+    pub visibility: Visibility,
+}
+
+impl MappingHeader {
+    pub fn new() -> Self {
+        Self {
+            identifier: String::new(),
+            visibility: Visibility::None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub struct MappingIdentifier {
+    pub header: MappingHeader,
     pub map: Mapping,
 }
 #[derive(Debug)]
@@ -109,7 +123,9 @@ impl Mapping {
 pub fn process_mapping(
     combined: &Vec<Token>,
     mapping: &mut Mapping,
-    name: &mut String,
+    mapping_header: &mut MappingHeader,
+    // name: &mut String,
+    // visibility:
 ) -> Result<(), (String, ErrType)> {
     let mut state = MappingState::None;
     let mut pad = 0;
@@ -141,9 +157,32 @@ pub fn process_mapping(
             }
             Token::CloseParenthesis => {
                 nested_count -= 1;
-                if let MappingState::Value = state {
+                if let MappingState::Value | MappingState::CloseParenthesisIdentifier = state {
                     state = MappingState::CloseParenthesisIdentifier;
-                } else if let MappingState::CloseParenthesisIdentifier = state {
+                } else {
+                    return Err((
+                        format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                        ErrType::Syntax,
+                    ));
+                }
+            }
+            Token::Public | Token::Private | Token::Internal | Token::External => {
+                if let MappingState::CloseParenthesisIdentifier = state {
+                    if nested_count != 0 {
+                        return Err((
+                            format!("Invalid declaration \"{}\"", n.to_string()),
+                            ErrType::Syntax,
+                        ));
+                    } else {
+                        if let Visibility::None = n.extract_visibility() {
+                            return Err((
+                                format!("Invalid declaration \"{}\"", n.to_string()),
+                                ErrType::Syntax,
+                            ));
+                        } else {
+                            mapping_header.visibility = n.extract_visibility();
+                        }
+                    }
                 } else {
                     return Err((
                         format!("Invalid variant declaration \"{}\"", combined.to_string()),
@@ -305,7 +344,8 @@ pub fn process_mapping(
                 } else if let MappingState::CloseParenthesisIdentifier = state {
                     if nested_count == 0 {
                         if let Token::Identifier(identifier) = n {
-                            name.push_str(identifier)
+                            mapping_header.identifier = identifier.to_string();
+                            // name.push_str(identifier)
                         } else {
                             return Err((
                                 format!("Expecting identifier but found \"{}\"", n.to_string()),

@@ -98,8 +98,40 @@ pub enum Token {
     False,
 }
 
+#[derive(Debug)]
+pub enum Visibility {
+    Public,
+    Internal,
+    External,
+    Private,
+    None,
+}
+
+impl Visibility {
+    pub fn get_visibility_from_token(token: &Token) -> Self {
+        match token {
+            Token::Public => Visibility::Public,
+            Token::Internal => Visibility::Internal,
+            Token::External => Visibility::External,
+            Token::Private => Visibility::Private,
+            _ => Visibility::None,
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match &self {
+            Visibility::External => Token::External.to_string(),
+            Visibility::Public => Token::Public.to_string(),
+            Visibility::Internal => Token::Internal.to_string(),
+            Visibility::Private => Token::Private.to_string(),
+            _ => unreachable!(),
+        }
+    }
+}
+
 pub trait TokenTrait {
     fn to_string(&self) -> String;
+    fn extract_visibility(&self) -> Visibility;
 }
 
 pub trait VecExtension {
@@ -193,11 +225,19 @@ impl TokenTrait for Token {
     fn to_string(&self) -> String {
         detokenize(&self)
     }
+
+    fn extract_visibility(&self) -> Visibility {
+        Visibility::get_visibility_from_token(&self)
+    }
 }
 
 impl TokenTrait for &Token {
     fn to_string(&self) -> String {
         detokenize(&self)
+    }
+
+    fn extract_visibility(&self) -> Visibility {
+        Visibility::get_visibility_from_token(&self)
     }
 }
 
