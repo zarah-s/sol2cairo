@@ -6,11 +6,11 @@ use crate::mods::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         identifiers::mapping::{process_mapping, Mapping},
         line_descriptors::LineDescriptions,
-        token::{Token, TokenTrait, VecExtension},
+        token::{Token, TokenTrait, VecExtension, Visibility},
     },
 };
 
-use super::mapping::MappingIdentifier;
+use super::mapping::{MappingHeader, MappingIdentifier};
 
 #[derive(Debug)]
 struct StructHeader {
@@ -221,12 +221,21 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
     match &combined[0] {
         Token::Mapping => {
             let mut mapping = Mapping::new();
-            let mut name = String::new();
-
-            process_mapping(combined, &mut mapping, &mut name)?;
+            let mut mapping_header = MappingHeader::new();
+            process_mapping(combined, &mut mapping, &mut mapping_header)?;
+            if let Visibility::None = mapping_header.visibility {
+                // TODO: NOTHING
+            } else {
+                return Err((
+                    format!(
+                        "Invalid visibility declaration on struct mapping \"{}\"",
+                        mapping_header.visibility.to_string()
+                    ),
+                    ErrType::Syntax,
+                ));
+            }
             let mapping_construct = StructType::Mapping(MappingIdentifier {
-                visibility: None,
-                identifier: name,
+                header: mapping_header,
                 map: mapping,
             });
 
