@@ -16,7 +16,7 @@ pub mod constants {
 pub mod functions {
     pub mod helpers {
         // pub mod error_helper;
-        // pub mod global;
+        pub mod global;
         // pub mod token_helper;
     }
 

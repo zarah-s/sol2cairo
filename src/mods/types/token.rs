@@ -1,10 +1,5 @@
 use crate::mods::constants::constants::{DATA_TYPES, INTEGER_SIZES, KEYWORDS, SYMBOLS};
 
-use super::{
-    compiler_errors::{CompilerError, SyntaxError},
-    line_descriptors::{LineDescriptions, StringDescriptor},
-};
-
 #[derive(Debug, PartialEq, Clone)]
 pub enum Token {
     Identifier(String),
@@ -105,8 +100,6 @@ pub enum Token {
 
 pub trait TokenTrait {
     fn to_string(&self) -> String;
-    fn tokenize(input: &str) -> Token;
-    fn lex(input: &str) -> Vec<Token>;
 }
 
 pub trait VecExtension {
@@ -200,27 +193,11 @@ impl TokenTrait for Token {
     fn to_string(&self) -> String {
         detokenize(&self)
     }
-
-    fn tokenize(input: &str) -> Token {
-        tokenize(input)
-    }
-
-    fn lex(input: &str) -> Vec<Token> {
-        lex(input)
-    }
 }
 
 impl TokenTrait for &Token {
     fn to_string(&self) -> String {
         detokenize(&self)
-    }
-
-    fn tokenize(input: &str) -> Token {
-        tokenize(input)
-    }
-
-    fn lex(input: &str) -> Vec<Token> {
-        lex(input)
     }
 }
 
@@ -345,7 +322,7 @@ fn detokenize(input: &Token) -> String {
 fn tokenize(input: &str) -> Token {
     match input {
         "revert" => Token::Revert,
-        " " => Token::Space,
+        " " | "" => Token::Space,
         "emit" => Token::Emit,
         "pragma" => Token::Pragma,
         "import" => Token::Import,

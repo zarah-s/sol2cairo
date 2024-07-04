@@ -16,10 +16,24 @@ library Name {
         Pending
     }
 
+     struct Layout {
+        address owner;
+        uint256 collection_count;
+        mapping(uint256 => Types.Collection) collection_by_id;
+        mapping(string => Types.Collection) collection_by_name;
+        mapping(uint => mapping(uint => mapping(uint => uint))) totalSupply;
+        mapping(uint => mapping(Types.Slot => address)) accessory;
+        mapping(address => mapping(uint256 => mapping(uint => Types.Token[]))) minted;
+    }
+
     struct No_2sd {
-        lib.dsd name;
-    
-   uint256 i;
+        lib.dsd[200e18*2/4-1+8] name;
+    mapping(uint => uint[(102)]) nad;
+   uint256[] name;
+    }
+
+    struct Structure{
+        
     }
     }
 
