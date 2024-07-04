@@ -69,11 +69,11 @@ impl Mapping {
     ) -> Result<(), (String, ErrType)> {
         if self.key.is_none() {
             if let Some(_key) = &key {
-                if let Some(_) = extract_data_type_from_token(&_key.tokenize()) {
-                    self.key = key;
-                } else {
-                    return Err((format!("Invalid data type \"{}\"", _key), ErrType::Syntax));
-                }
+                // if let Some(_) = extract_data_type_from_token(&_key.tokenize()) {
+                self.key = key;
+                // } else {
+                //     return Err((format!("Invalid data type \"{}\"", _key), ErrType::Syntax));
+                // }
             } else {
                 return Err(("Expecting key".to_string(), ErrType::Missing));
             }
@@ -82,14 +82,14 @@ impl Mapping {
                 self.value = Some(_val);
             } else {
                 let _key = key.clone().unwrap();
-                if let Some(_) = extract_data_type_from_token(&_key.tokenize()) {
-                    self.value = Some(MappingValue::Mapping(Box::new(Mapping {
-                        key,
-                        value: None,
-                    })));
-                } else {
-                    return Err((format!("Invalid data type \"{}\"", _key), ErrType::Syntax));
-                }
+                // if let Some(_) = extract_data_type_from_token(&_key.tokenize()) {
+                self.value = Some(MappingValue::Mapping(Box::new(Mapping {
+                    key,
+                    value: None,
+                })));
+                // } else {
+                //     return Err((format!("Invalid data type \"{}\"", _key), ErrType::Syntax));
+                // }
             }
         } else {
             if let Some(ref mut node) = self.value {
@@ -179,7 +179,29 @@ pub fn process_mapping(
             | Token::Address
             | Token::String => {
                 if let MappingState::OpenParenthesisIdentifier = state {
-                    mapping.insert(Some(n.to_string()), None)?;
+                    let mut key = String::new();
+                    if let None = extract_data_type_from_token(n) {
+                        let slc = &combined[index..]
+                            .iter()
+                            .position(|pred| *pred == Token::Equals);
+                        if let Some(_slc_index) = slc {
+                            pad = index + _slc_index;
+                            process_type(
+                                &combined[index..index + _slc_index].to_vec().strip_spaces(),
+                                &mut key,
+                                combined,
+                            )?;
+                        } else {
+                            return Err((
+                                format!("=> \"{}\"", combined.to_string()),
+                                ErrType::Unexpected,
+                            ));
+                        }
+                    } else {
+                        key.push_str(&n.to_string());
+                    }
+
+                    mapping.insert(Some(key), None)?;
                     state = MappingState::Key;
                 } else if let MappingState::Gt = state {
                     let peek_next = combined.iter().collect::<Vec<_>>();
