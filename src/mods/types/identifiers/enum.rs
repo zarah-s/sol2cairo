@@ -27,7 +27,6 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
         let mut enum_identifier = String::new();
 
         /* SANITY CHECKS */
-
         {
             if lexem.is_empty() {
                 continue;
@@ -84,7 +83,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
-                    let _ = validate_identifier(&identifier).unwrap_or_else(|err| {
+                    validate_identifier(&identifier).unwrap_or_else(|err| {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
                             .throw_with_file_info("Contract.sol", header_line)
                     });

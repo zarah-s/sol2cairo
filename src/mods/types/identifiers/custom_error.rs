@@ -41,7 +41,7 @@ pub fn parse_custom_errors(
 
             if *first_element != Token::Error {
                 CompilerError::InternalError(&format!(
-                    "Expecting enum but found {}",
+                    "Expecting error but found {}",
                     first_element.to_string()
                 ))
                 .throw_with_file_info("Contract.sol", lexem.first().unwrap().line)
@@ -86,7 +86,7 @@ pub fn parse_custom_errors(
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
-                    let _ = validate_identifier(&identifier).unwrap_or_else(|err| {
+                    validate_identifier(&identifier).unwrap_or_else(|err| {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
                             .throw_with_file_info("Contract.sol", header_line)
                     });

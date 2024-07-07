@@ -32,7 +32,7 @@ pub enum StructType {
 pub struct Variant {
     pub r#type: String,
     pub name: String,
-    pub size: Option<String>,
+    pub array_size: Option<String>,
     pub is_array: bool,
 }
 
@@ -41,7 +41,7 @@ impl Variant {
         Self {
             r#type: String::new(),
             name: String::new(),
-            size: None,
+            array_size: None,
             is_array: false,
         }
     }
@@ -111,7 +111,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
-                    let _ = validate_identifier(&identifier).unwrap_or_else(|err| {
+                    validate_identifier(&identifier).unwrap_or_else(|err| {
                         CompilerError::SyntaxError(
                             crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&err),
                         )
@@ -306,7 +306,7 @@ fn process_non_mapping_variant(
     *variant = Variant {
         is_array,
         name,
-        size,
+        array_size: size,
         r#type,
     };
 

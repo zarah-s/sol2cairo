@@ -123,7 +123,7 @@ import "../IT.sol";
 contract Yds {}
 
 library Lb {
-    using Oi for uint;
+    using Oi for uint[];
     error Lib_ERROR(Oi,Shit,uint256,_);
 
     function dd() {}

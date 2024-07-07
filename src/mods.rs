@@ -6,6 +6,7 @@ pub mod types {
     pub mod identifiers {
         pub mod custom_error;
         pub mod r#enum;
+        pub mod lib_implementation;
         pub mod mapping;
         pub mod r#struct;
     }

@@ -4,7 +4,8 @@ use crate::mods::{
         compiler_errors::{CompilerError, SyntaxError},
         context::{ContextFn, TerminationTypeContext, VariantContext},
         identifiers::{
-            custom_error::parse_custom_errors, r#enum::parse_enums, r#struct::parse_structs,
+            custom_error::parse_custom_errors, lib_implementation::parse_lib_implementations,
+            r#enum::parse_enums, r#struct::parse_structs,
         },
         line_descriptors::{LineDescriptions, StringDescriptor, TokenDescriptor},
         token::{Token, TokenTrait, VecExtension},
@@ -34,7 +35,9 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _ = parse_enums(enums);
 
         let _ = parse_custom_errors(errors);
-        // println!("{:#?}", custom_errors);
+
+        let _ = parse_lib_implementations(lib_implementations);
+        // println!("{:#?}", lib_impls);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
