@@ -1,7 +1,8 @@
 use regex::Regex;
 
 use crate::mods::types::{
-    compiler_errors::ErrType,
+    compiler_errors::{CompilerError, ErrType},
+    line_descriptors::LineDescriptions,
     token::{Token, TokenTrait, VecExtension},
 };
 
@@ -138,4 +139,14 @@ pub fn process_name(
     }
 
     Ok(())
+}
+
+pub fn validate_identifier(haystack: &str) -> Result<(), String> {
+    let identifier_pattern = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
+
+    if identifier_pattern.is_match(haystack) {
+        Ok(())
+    } else {
+        Err(format!("Invalid identifier pattern {}", haystack))
+    }
 }

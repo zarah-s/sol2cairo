@@ -124,8 +124,6 @@ pub fn process_mapping(
     combined: &Vec<Token>,
     mapping: &mut Mapping,
     mapping_header: &mut MappingHeader,
-    // name: &mut String,
-    // visibility:
 ) -> Result<(), (String, ErrType)> {
     let mut state = MappingState::None;
     let mut pad = 0;

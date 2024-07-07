@@ -12,8 +12,17 @@ library Name {
         {}
     }
 
-    enum Stats {
-        Pending
+    enum Statsf {
+        Pending,
+        Failed
+    }
+
+
+     enum Status {
+        Single,
+        Married,
+        Hehe,
+
     }
 
      struct Layout {

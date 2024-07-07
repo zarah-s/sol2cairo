@@ -4,6 +4,7 @@ pub mod types {
     pub mod line_descriptors;
     pub mod token;
     pub mod identifiers {
+        pub mod enum_identifier;
         pub mod mapping;
         pub mod r#struct;
     }

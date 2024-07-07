@@ -1,7 +1,5 @@
-use regex::Regex;
-
 use crate::mods::{
-    functions::helpers::global::{process_name, process_size, process_type},
+    functions::helpers::global::{process_name, process_size, process_type, validate_identifier},
     types::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         identifiers::mapping::{process_mapping, Mapping},
@@ -113,17 +111,13 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
-                    let variable_name_pattern = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
-                    if variable_name_pattern.is_match(&identifier) {
-                        struct_identifier = identifier.to_owned();
-                    } else {
+                    let _ = validate_identifier(&identifier).unwrap_or_else(|err| {
                         CompilerError::SyntaxError(
-                            crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                                &format!("Invalid variable name pattern {}", identifier),
-                            ),
+                            crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&err),
                         )
                         .throw_with_file_info("Contract.sol", header_line)
-                    }
+                    });
+                    struct_identifier = identifier.to_owned();
                 } else {
                     CompilerError::SyntaxError(
                         crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&format!(

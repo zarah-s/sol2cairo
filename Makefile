@@ -1,6 +1,6 @@
 # Makefile
 
-TARGET = compiler
+TARGET = pydec
 SRC = src/main.rs
 
 .PHONY: all clean
