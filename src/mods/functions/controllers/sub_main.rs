@@ -37,7 +37,7 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _ = parse_custom_errors(errors);
 
         let _ = parse_lib_implementations(lib_implementations);
-        // println!("{:#?}", lib_impls);
+        println!("{:#?}", lib_header);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
@@ -223,6 +223,7 @@ fn seperate_variants(
                                 opened_braces_count += 1;
                             }
                         } else {
+                            // println!("{:?}", tokens);
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
                                 .throw_with_file_info("Contract.sol", lexems.line);
                         }
@@ -489,8 +490,20 @@ fn seperate_variant_variants(
                                 combined.clear();
                             }
                         } else {
-                            CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
-                                .throw_with_file_info("Contract.sol", _line_desc.line);
+                            opened_braces_count += 1;
+                            if opened_braces_count == 1 {
+                                combined.push(LineDescriptions {
+                                    data: tokens.clone(),
+                                    line: _line_desc.line,
+                                });
+                                tokens.clear();
+
+                                lib_header.push(combined.clone());
+                                combined.clear();
+                            } else {
+                                CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
+                                    .throw_with_file_info("Contract.sol", _line_desc.line);
+                            }
                         }
                     }
                 }
@@ -545,15 +558,19 @@ fn seperate_variant_variants(
                             ))
                             .throw_with_file_info("Contract.sol", _line_desc.line);
                         }
-                        Some(initial) => match initial {
-                            Token::Library | Token::Contract | Token::Interface => {}
-                            _ => {
-                                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
-                                    &tokens.strip_spaces()[0].to_string(),
-                                ))
-                                .throw_with_file_info("Contract.sol", _line_desc.line);
+                        Some(initial) => {
+                            if opened_braces_count > 0 {
+                                match initial {
+                                    Token::Library | Token::Contract | Token::Interface => {}
+                                    _ => {
+                                        CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
+                                            &tokens.strip_spaces()[0].to_string(),
+                                        ))
+                                        .throw_with_file_info("Contract.sol", _line_desc.line);
+                                    }
+                                }
                             }
-                        },
+                        }
                     }
                 }
             }
