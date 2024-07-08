@@ -350,7 +350,7 @@ fn detokenize(input: &Token) -> String {
         Token::Modulu => "%".to_string(),
         Token::SemiColon => ";".to_string(),
         Token::Quotation => "\"".to_string(),
-        Token::Coma => ".to_string(),".to_string(),
+        Token::Coma => ",".to_string(),
         Token::Or => "|".to_string(),
         Token::And => "&".to_string(),
         Token::Not => "~".to_string(),
