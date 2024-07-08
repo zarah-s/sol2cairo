@@ -12,8 +12,17 @@ library Name {
         {}
     }
 
-    enum Stats {
-        Pending
+    enum Statsf {
+        Pending,
+        Failed
+    }
+
+
+     enum Status {
+        Single,
+        Married,
+        Hehe,
+
     }
 
      struct Layout {
@@ -54,7 +63,9 @@ interface IT {
     returns (address);
 }
 
-contract ReceiveEther {
+contract
+ ReceiveEther
+ {
     string sdf = "This is /*not*/ a comment";
     mapping(uint => address) name
 
@@ -113,9 +124,11 @@ import "../IT.sol";
 
 contract Yds {}
 
-library Lb {
-    using Oi for uint;
-    error Lib_ERROR();
+library Lb
+ {
+    using Oi for uint[];
+    error Lib_ERROR(Oi,Shit,uint256,_);
 
-    function dd() {}
+    function dd() 
+    {}
 }

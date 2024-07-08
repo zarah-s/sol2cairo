@@ -41,7 +41,7 @@ pub struct MappingIdentifier {
 #[derive(Debug)]
 pub struct ReturnValue {
     pub r#type: String,
-    pub size: Option<String>,
+    pub array_size: Option<String>,
     pub is_array: bool,
 }
 
@@ -124,8 +124,6 @@ pub fn process_mapping(
     combined: &Vec<Token>,
     mapping: &mut Mapping,
     mapping_header: &mut MappingHeader,
-    // name: &mut String,
-    // visibility:
 ) -> Result<(), (String, ErrType)> {
     let mut state = MappingState::None;
     let mut pad = 0;
@@ -337,7 +335,7 @@ pub fn process_mapping(
                         None,
                         Some(MappingValue::Raw(ReturnValue {
                             r#type: r#type.clone(),
-                            size: size.clone(),
+                            array_size: size.clone(),
                             is_array,
                         })),
                     )?
