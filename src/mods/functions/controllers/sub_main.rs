@@ -1,5 +1,8 @@
 use crate::mods::{
-    functions::controllers::process_file_contents::process_file_contents,
+    functions::{
+        controllers::process_file_contents::process_file_contents,
+        helpers::global::validate_identifier,
+    },
     types::{
         compiler_errors::{CompilerError, SyntaxError},
         context::{ContextFn, TerminationTypeContext, VariantContext},
@@ -31,13 +34,91 @@ pub async fn compile_source_code(args: Vec<String>) {
     for library in libraries {
         let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
             seperate_variant_variants(library, false);
+        if lib_header.len() != 1 {
+            let mut stringified_components = String::new();
+
+            for comp in &lib_header {
+                for lex in comp {
+                    for tkn in &lex.data {
+                        stringified_components.push_str(&tkn.to_string());
+                    }
+                }
+            }
+            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                "Invalid declaration {}",
+                stringified_components
+            )))
+            .throw_with_file_info(
+                "Contract.sol",
+                lib_header.first().unwrap().first().unwrap().line,
+            );
+        }
+        let mut lib_identifier = String::new();
+        /* VALIDATE HEADER */
+        for lexem in lib_header {
+            {
+                let mut header_tokens: Vec<&Token> = Vec::new();
+                let header_line = lexem.first().unwrap().line;
+                let mut should_break = false;
+                for lex in &lexem {
+                    if should_break {
+                        break;
+                    }
+                    for token in &lex.data {
+                        // header_index_stop += 1;
+                        if *token == Token::OpenBraces {
+                            should_break = true;
+                            break;
+                        }
+                        header_tokens.push(token);
+                    }
+                }
+
+                if header_tokens.strip_spaces().is_empty() {
+                    CompilerError::SyntaxError(
+                        crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
+                    )
+                    .throw_with_file_info("Contract.sol", header_line)
+                }
+
+                if header_tokens.strip_spaces().len() != 2 {
+                    CompilerError::SyntaxError(
+                        crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
+                            header_tokens.to_string().trim(),
+                        ),
+                    )
+                    .throw_with_file_info("Contract.sol", header_line)
+                } else {
+                    if let Token::Identifier(identifier) =
+                        header_tokens.strip_spaces().last().unwrap()
+                    {
+                        validate_identifier(&identifier).unwrap_or_else(|err| {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
+                                .throw_with_file_info("Contract.sol", header_line)
+                        });
+                        lib_identifier = identifier.to_owned();
+                    } else {
+                        CompilerError::SyntaxError(
+                            crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
+                                &format!(
+                                    "Expecting identifier but found {}",
+                                    header_tokens.strip_spaces().last().unwrap().to_string()
+                                ),
+                            ),
+                        )
+                        .throw_with_file_info("Contract.sol", header_line)
+                    }
+                }
+            }
+        }
+
         let _ = parse_structs(structs);
         let _ = parse_enums(enums);
 
         let _ = parse_custom_errors(errors);
 
         let _ = parse_lib_implementations(lib_implementations);
-        println!("{:#?}", lib_header);
+        println!("{:#?}", lib_identifier);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
