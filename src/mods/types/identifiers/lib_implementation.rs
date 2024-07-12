@@ -10,6 +10,7 @@ use crate::mods::{
 #[derive(Debug)]
 pub struct LibraryImplementation {
     pub library_identifier: String,
+    pub line: String,
     pub data_type: String,
     pub is_array: bool,
     pub array_size: Option<String>,
@@ -133,9 +134,9 @@ pub fn parse_lib_implementations(
                                 .position(|pred| *pred == Token::CloseSquareBracket);
                             if let Some(_close_index) = close_index {
                                 let slice = &lex.data[index + 1..][..*_close_index];
-                                let mut stringified_array_size = String::new();
 
                                 if !slice.is_empty() {
+                                    let mut stringified_array_size = String::new();
                                     pad = index + 1 + _close_index + 1;
                                     for slc in slice {
                                         stringified_array_size.push_str(&slc.to_string());
@@ -177,6 +178,7 @@ pub fn parse_lib_implementations(
 
         let impl_construct = LibraryImplementation {
             array_size,
+            line: lexem[0].line.to_string(),
             data_type,
             is_array,
             library_identifier: lib_identifier,

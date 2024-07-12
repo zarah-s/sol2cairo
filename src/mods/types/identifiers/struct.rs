@@ -19,6 +19,7 @@ struct StructHeader {
 #[derive(Debug)]
 pub struct StructIdentifier {
     pub header: StructHeader,
+    pub line: String,
     pub types: Vec<StructType>,
 }
 
@@ -130,6 +131,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
             }
         }
 
+        let struct_line = lexem[0].line;
         {
             let mut skipped_count = 0;
             let mut combined: Vec<Token> = Vec::new();
@@ -204,7 +206,9 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                 is_storage,
             },
             types: struct_types,
+            line: struct_line.to_string(),
         };
+
         structs.push(struct_construct);
     }
 

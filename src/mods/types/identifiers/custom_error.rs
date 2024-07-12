@@ -10,6 +10,7 @@ use crate::mods::{
 #[derive(Debug)]
 pub struct CustomErrorIdentifier {
     pub identifier: String,
+    pub line: String,
     pub args: Option<Vec<String>>,
 }
 
@@ -187,6 +188,7 @@ pub fn parse_custom_errors(
 
             let error_construct = CustomErrorIdentifier {
                 identifier: error_identifier,
+                line: lexem[0].line.to_string(),
                 args: if arguments.is_empty() {
                     None
                 } else {

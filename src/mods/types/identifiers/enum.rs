@@ -10,6 +10,7 @@ use crate::mods::{
 #[derive(Debug)]
 pub struct EnumIdentifier {
     pub identifier: String,
+    pub line: String,
     pub variants: Vec<String>,
 }
 
@@ -106,8 +107,8 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
             let mut skipped_count = 0;
             let mut opened_brace = 1; /* validate header skips one count */
             let mut enum_state = EnumState::None;
-            for lex in lexem {
-                for token in lex.data {
+            for lex in &lexem {
+                for token in &lex.data {
                     if skipped_count < header_index_stop {
                         skipped_count += 1;
                         continue;
@@ -159,6 +160,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
 
             let enum_construct = EnumIdentifier {
                 identifier: enum_identifier,
+                line: lexem[0].line.to_string(),
                 variants,
             };
 
