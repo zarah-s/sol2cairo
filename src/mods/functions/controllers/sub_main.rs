@@ -1,3 +1,5 @@
+use std::env;
+
 use crate::mods::{
     functions::{
         controllers::process_file_contents::process_file_contents,
@@ -8,7 +10,7 @@ use crate::mods::{
         context::{ContextFn, TerminationTypeContext, VariantContext},
         identifiers::{
             custom_error::parse_custom_errors, lib_implementation::parse_lib_implementations,
-            r#enum::parse_enums, r#struct::parse_structs,
+            r#enum::parse_enums, r#struct::parse_structs, variable::parse_variables,
         },
         line_descriptors::{LineDescriptions, StringDescriptor, TokenDescriptor},
         token::{Token, TokenTrait, VecExtension},
@@ -16,7 +18,9 @@ use crate::mods::{
 };
 
 pub async fn compile_source_code(args: Vec<String>) {
-    let parsable_structure = process_file_contents(args).await;
+    let file_path = &args.last();
+    let parsable_structure = process_file_contents(&args).await;
+    env::set_var("file_path", file_path.unwrap());
     let mut imports: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut libraries: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut interfaces: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
@@ -49,7 +53,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                 stringified_components
             )))
             .throw_with_file_info(
-                "Contract.sol",
+                &std::env::var("file_path").unwrap(),
                 lib_header.first().unwrap().first().unwrap().line,
             );
         }
@@ -78,7 +82,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                     CompilerError::SyntaxError(
                         crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
                     )
-                    .throw_with_file_info("Contract.sol", header_line)
+                    .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
                 }
 
                 if header_tokens.strip_spaces().len() != 2 {
@@ -87,14 +91,17 @@ pub async fn compile_source_code(args: Vec<String>) {
                             header_tokens.to_string().trim(),
                         ),
                     )
-                    .throw_with_file_info("Contract.sol", header_line)
+                    .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
                 } else {
                     if let Token::Identifier(identifier) =
                         header_tokens.strip_spaces().last().unwrap()
                     {
                         validate_identifier(&identifier).unwrap_or_else(|err| {
                             CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                                .throw_with_file_info("Contract.sol", header_line)
+                                .throw_with_file_info(
+                                    &std::env::var("file_path").unwrap(),
+                                    header_line,
+                                )
                         });
                         lib_identifier = identifier.to_owned();
                     } else {
@@ -106,7 +113,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                                 ),
                             ),
                         )
-                        .throw_with_file_info("Contract.sol", header_line)
+                        .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
                     }
                 }
             }
@@ -118,7 +125,8 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _ = parse_custom_errors(errors);
 
         let _ = parse_lib_implementations(lib_implementations);
-        println!("{:#?}", lib_identifier);
+        parse_variables(vars);
+        // println!("{:#?}", parse);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
@@ -278,7 +286,10 @@ fn seperate_variants(
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info("Contract.sol", lexems.line);
+                                .throw_with_file_info(
+                                    &std::env::var("file_path").unwrap(),
+                                    lexems.line,
+                                );
                             }
                         }
                         context = VariantContext::None;
@@ -304,9 +315,11 @@ fn seperate_variants(
                                 opened_braces_count += 1;
                             }
                         } else {
-                            // println!("{:?}", tokens);
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
-                                .throw_with_file_info("Contract.sol", lexems.line);
+                                .throw_with_file_info(
+                                    &std::env::var("file_path").unwrap(),
+                                    lexems.line,
+                                );
                         }
                     }
                 }
@@ -344,7 +357,65 @@ fn seperate_variants(
                     }
                 }
 
-                _ => {}
+                Token::Space => {}
+
+                _ => {
+                    if opened_braces_count == 0 {
+                        match context {
+                            VariantContext::Import
+                            | VariantContext::Header
+                            | VariantContext::Error => {}
+
+                            _ => match context {
+                                VariantContext::Contract | VariantContext::Interface => {
+                                    if token.is_keyword() {
+                                        if *token != Token::Is {
+                                            CompilerError::SyntaxError(
+                                                SyntaxError::UnexpectedToken(&format!(
+                                                    "{}. Expecting {}",
+                                                    token.to_string(),
+                                                    "{"
+                                                )),
+                                            )
+                                            .throw_with_file_info(
+                                                &std::env::var("file_path").unwrap(),
+                                                lexems.line,
+                                            );
+                                        }
+                                    } else if token.is_symbol() {
+                                        if *token != Token::Coma {
+                                            CompilerError::SyntaxError(
+                                                SyntaxError::UnexpectedToken(&format!(
+                                                    "{}. Expecting {}",
+                                                    token.to_string(),
+                                                    "{"
+                                                )),
+                                            )
+                                            .throw_with_file_info(
+                                                &std::env::var("file_path").unwrap(),
+                                                lexems.line,
+                                            );
+                                        }
+                                    }
+                                }
+
+                                VariantContext::Library => {
+                                    if token.is_keyword() || token.is_symbol() {
+                                        CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
+                                            &format!("{}. Expecting {}", token.to_string(), "{"),
+                                        ))
+                                        .throw_with_file_info(
+                                            &std::env::var("file_path").unwrap(),
+                                            lexems.line,
+                                        );
+                                    }
+                                }
+
+                                _ => {}
+                            },
+                        }
+                    }
+                }
             }
 
             if let VariantContext::None = context {
@@ -352,7 +423,7 @@ fn seperate_variants(
                     CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                         &tokens.strip_spaces()[0].to_string(),
                     ))
-                    .throw_with_file_info("Contract.sol", lexems.line);
+                    .throw_with_file_info(&std::env::var("file_path").unwrap(), lexems.line);
                 }
             }
         }
@@ -371,7 +442,10 @@ fn seperate_variants(
             VariantContext::Contract | VariantContext::Interface | VariantContext::Library => "}",
             _ => ";",
         }))
-        .throw_with_file_info("Contract.sol", combined.last().unwrap().line);
+        .throw_with_file_info(
+            &std::env::var("file_path").unwrap(),
+            combined.last().unwrap().line,
+        );
     }
 }
 
@@ -538,7 +612,10 @@ fn seperate_variant_variants(
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info("Contract.sol", _line_desc.line);
+                                .throw_with_file_info(
+                                    &std::env::var("file_path").unwrap(),
+                                    _line_desc.line,
+                                );
                             }
                         }
                         terminator_type = TerminationTypeContext::None;
@@ -583,7 +660,10 @@ fn seperate_variant_variants(
                                 combined.clear();
                             } else {
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
-                                    .throw_with_file_info("Contract.sol", _line_desc.line);
+                                    .throw_with_file_info(
+                                        &std::env::var("file_path").unwrap(),
+                                        _line_desc.line,
+                                    );
                             }
                         }
                     }
@@ -637,7 +717,10 @@ fn seperate_variant_variants(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &tokens.strip_spaces()[0].to_string(),
                             ))
-                            .throw_with_file_info("Contract.sol", _line_desc.line);
+                            .throw_with_file_info(
+                                &std::env::var("file_path").unwrap(),
+                                _line_desc.line,
+                            );
                         }
                         Some(initial) => {
                             if opened_braces_count > 0 {
@@ -647,7 +730,10 @@ fn seperate_variant_variants(
                                         CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                             &tokens.strip_spaces()[0].to_string(),
                                         ))
-                                        .throw_with_file_info("Contract.sol", _line_desc.line);
+                                        .throw_with_file_info(
+                                            &std::env::var("file_path").unwrap(),
+                                            _line_desc.line,
+                                        );
                                     }
                                 }
                             }
@@ -674,7 +760,10 @@ fn seperate_variant_variants(
             | TerminationTypeContext::Enum => "}",
             _ => ";",
         }))
-        .throw_with_file_info("Contract.sol", combined.last().unwrap().line);
+        .throw_with_file_info(
+            &std::env::var("file_path").unwrap(),
+            combined.last().unwrap().line,
+        );
     }
 
     (

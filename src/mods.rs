@@ -9,6 +9,7 @@ pub mod types {
         pub mod lib_implementation;
         pub mod mapping;
         pub mod r#struct;
+        pub mod variable;
     }
 }
 

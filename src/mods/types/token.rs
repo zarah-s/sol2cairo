@@ -107,6 +107,34 @@ pub enum Visibility {
     None,
 }
 
+#[derive(Debug)]
+pub enum Mutability {
+    Constant,
+    Immutable,
+    Mutable,
+    None,
+}
+
+impl Mutability {
+    pub fn get_mutability_from_token(token: &Token) -> Self {
+        match token {
+            Token::Immutable => Mutability::Immutable,
+            Token::Constant => Mutability::Constant,
+            Token::Mutable => Mutability::Mutable,
+            _ => Mutability::None,
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match &self {
+            Mutability::Immutable => Token::Immutable.to_string(),
+            Mutability::Constant => Token::Constant.to_string(),
+            Mutability::Mutable => Token::Mutable.to_string(),
+            _ => unreachable!(),
+        }
+    }
+}
+
 impl Visibility {
     pub fn get_visibility_from_token(token: &Token) -> Self {
         match token {
@@ -132,6 +160,9 @@ impl Visibility {
 pub trait TokenTrait {
     fn to_string(&self) -> String;
     fn extract_visibility(&self) -> Visibility;
+    fn extract_mutability(&self) -> Mutability;
+    fn is_symbol(&self) -> bool;
+    fn is_keyword(&self) -> bool;
 }
 
 pub trait VecExtension {
@@ -148,7 +179,7 @@ impl VecExtension for Vec<Token> {
     fn to_string(&self) -> String {
         let mut stringified = String::new();
         for _token in self.iter() {
-            stringified.push_str(&_token.to_string())
+            stringified.push_str(&_token.to_string());
         }
 
         stringified
@@ -226,8 +257,23 @@ impl TokenTrait for Token {
         detokenize(&self)
     }
 
+    fn is_keyword(&self) -> bool {
+        KEYWORDS.contains(&self.to_string().as_str())
+    }
+
+    fn is_symbol(&self) -> bool {
+        if self.to_string().len() > 1 {
+            false
+        } else {
+            SYMBOLS.contains(&self.to_string().parse::<char>().unwrap())
+        }
+    }
+
     fn extract_visibility(&self) -> Visibility {
         Visibility::get_visibility_from_token(&self)
+    }
+    fn extract_mutability(&self) -> Mutability {
+        Mutability::get_mutability_from_token(&self)
     }
 }
 
@@ -235,9 +281,24 @@ impl TokenTrait for &Token {
     fn to_string(&self) -> String {
         detokenize(&self)
     }
+    fn is_keyword(&self) -> bool {
+        KEYWORDS.contains(&self.to_string().as_str())
+    }
+
+    fn is_symbol(&self) -> bool {
+        if self.to_string().len() > 1 {
+            false
+        } else {
+            SYMBOLS.contains(&self.to_string().parse::<char>().unwrap())
+        }
+    }
 
     fn extract_visibility(&self) -> Visibility {
         Visibility::get_visibility_from_token(&self)
+    }
+
+    fn extract_mutability(&self) -> Mutability {
+        Mutability::get_mutability_from_token(&self)
     }
 }
 
