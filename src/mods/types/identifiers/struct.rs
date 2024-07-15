@@ -70,7 +70,10 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                     "Expecting struct but found {}",
                     first_element.to_string()
                 ))
-                .throw_with_file_info("Contract.sol", lexem.first().unwrap().line)
+                .throw_with_file_info(
+                    &std::env::var("file_path").unwrap(),
+                    lexem.first().unwrap().line,
+                )
             }
         }
 
@@ -99,7 +102,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                 CompilerError::SyntaxError(
                     crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
                 )
-                .throw_with_file_info("Contract.sol", header_line)
+                .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
             }
 
             if header_tokens.strip_spaces().len() != 2 {
@@ -108,7 +111,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                         header_tokens.to_string().trim(),
                     ),
                 )
-                .throw_with_file_info("Contract.sol", header_line)
+                .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
@@ -116,7 +119,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                         CompilerError::SyntaxError(
                             crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&err),
                         )
-                        .throw_with_file_info("Contract.sol", header_line)
+                        .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
                     });
                     struct_identifier = identifier.to_owned();
                 } else {
@@ -126,7 +129,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                             header_tokens.strip_spaces().last().unwrap().to_string()
                         )),
                     )
-                    .throw_with_file_info("Contract.sol", header_line)
+                    .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
                 }
             }
         }
@@ -153,7 +156,10 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                                                 err, struct_identifier
                                             )),
                                         )
-                                        .throw_with_file_info("Contract.sol", lex.line),
+                                        .throw_with_file_info(
+                                            &std::env::var("file_path").unwrap(),
+                                            lex.line,
+                                        ),
 
                                         ErrType::Syntax => CompilerError::SyntaxError(
                                             SyntaxError::SyntaxError(&format!(
@@ -161,14 +167,20 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                                                 err, struct_identifier
                                             )),
                                         )
-                                        .throw_with_file_info("Contract.sol", lex.line),
+                                        .throw_with_file_info(
+                                            &std::env::var("file_path").unwrap(),
+                                            lex.line,
+                                        ),
                                         ErrType::Unexpected => CompilerError::SyntaxError(
                                             SyntaxError::UnexpectedToken(&format!(
                                                 "{} for struct {}",
                                                 err, struct_identifier
                                             )),
                                         )
-                                        .throw_with_file_info("Contract.sol", lex.line),
+                                        .throw_with_file_info(
+                                            &std::env::var("file_path").unwrap(),
+                                            lex.line,
+                                        ),
                                     }
                                     unreachable!()
                                 },
@@ -189,7 +201,10 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                                         ";",
                                     ),
                                 )
-                                .throw_with_file_info("Contract.sol", lex.line)
+                                .throw_with_file_info(
+                                    &std::env::var("file_path").unwrap(),
+                                    lex.line,
+                                )
                             }
                         }
 

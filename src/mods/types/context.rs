@@ -48,7 +48,7 @@ impl ContextFn for VariantContext {
                     Self::Contract | Self::Interface | Self::Library => "}",
                     _ => ";",
                 }))
-                .throw_with_file_info("Contract.sol", _lexems.lex().line);
+                .throw_with_file_info(&std::env::var("file_path").unwrap(), _lexems.lex().line);
             }
         } else {
             CompilerError::InternalError("Unprocessible entity").throw();
@@ -66,14 +66,14 @@ impl ContextFn for TerminationTypeContext {
         if let Some(_lexems) = lexems {
             if opened_braces_count.unwrap() != 1 {
                 CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
-                    .throw_with_file_info("Contract.sol", _lexems.line);
+                    .throw_with_file_info(&std::env::var("file_path").unwrap(), _lexems.line);
             }
             if *self != Self::None && !tokens.is_empty() {
                 CompilerError::SyntaxError(SyntaxError::MissingToken(match self {
                     Self::Struct | Self::Enum | Self::Function => "}",
                     _ => ";",
                 }))
-                .throw_with_file_info("Contract.sol", _lexems.lex().line);
+                .throw_with_file_info(&std::env::var("file_path").unwrap(), _lexems.lex().line);
             }
         } else {
             CompilerError::InternalError("Unprocessible entity").throw();
