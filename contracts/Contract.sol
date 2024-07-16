@@ -124,10 +124,11 @@ contract SendEther
 
 import "../IT.sol";
 
-contract Yds is OI {}
+contract Yds is OI{
+     sld oi;
+}
 
-library Lb
- {
+library Lb{ sld oi;
     using Oi for uint[];
     error Lib_ERROR(Oi,Shit,uint256,_);
 

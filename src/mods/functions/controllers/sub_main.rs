@@ -324,6 +324,13 @@ fn seperate_variants(
                     }
                 }
                 Token::CloseBraces => {
+                    if opened_braces_count == 0 && !is_import_brace {
+                        CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                            .throw_with_file_info(
+                                &std::env::var("file_path").unwrap(),
+                                lexems.line,
+                            );
+                    }
                     if !is_import_brace {
                         opened_braces_count -= 1;
                         if opened_braces_count == 0 {
@@ -396,6 +403,112 @@ fn seperate_variants(
                                                 lexems.line,
                                             );
                                         }
+                                    } else {
+                                        if tokens.contains(&Token::Contract)
+                                            || tokens.contains(&Token::Interface)
+                                        {
+                                            let stripped_spaces = tokens.strip_spaces();
+                                            if let Token::Identifier(_) = token {
+                                                if stripped_spaces[stripped_spaces.len() - 2]
+                                                    != Token::Interface
+                                                    && stripped_spaces[stripped_spaces.len() - 2]
+                                                        != Token::Contract
+                                                    && stripped_spaces[stripped_spaces.len() - 2]
+                                                        != Token::Coma
+                                                    && stripped_spaces[stripped_spaces.len() - 2]
+                                                        != Token::Is
+                                                {
+                                                    CompilerError::SyntaxError(
+                                                        SyntaxError::UnexpectedToken(&format!(
+                                                            "{}. Expecting {}",
+                                                            token.to_string(),
+                                                            "{"
+                                                        )),
+                                                    )
+                                                    .throw_with_file_info(
+                                                        &std::env::var("file_path").unwrap(),
+                                                        lexems.line,
+                                                    );
+                                                }
+                                            } else if let Token::Is | Token::Coma = token {
+                                                // TODO: NOTHING
+                                            } else {
+                                                CompilerError::SyntaxError(
+                                                    SyntaxError::UnexpectedToken(&format!(
+                                                        "{}. Expecting {}",
+                                                        token.to_string(),
+                                                        "{"
+                                                    )),
+                                                )
+                                                .throw_with_file_info(
+                                                    &std::env::var("file_path").unwrap(),
+                                                    lexems.line,
+                                                );
+                                            }
+                                        } else {
+                                            let last_token =
+                                                combined.last().unwrap().data.last().unwrap();
+                                            if *last_token != Token::Interface
+                                                && *last_token != Token::Contract
+                                                && *last_token != Token::Coma
+                                                && *last_token != Token::Is
+                                            {
+                                                CompilerError::SyntaxError(
+                                                    SyntaxError::UnexpectedToken(&format!(
+                                                        "{}. Expecting {}",
+                                                        token.to_string(),
+                                                        "{"
+                                                    )),
+                                                )
+                                                .throw_with_file_info(
+                                                    &std::env::var("file_path").unwrap(),
+                                                    lexems.line,
+                                                );
+                                            } else {
+                                                for (index, tkn) in
+                                                    tokens.strip_spaces().iter().enumerate()
+                                                {
+                                                    match tkn {
+                                                        Token::Coma => {}
+                                                        Token::Identifier(_) => {
+                                                            if index > 0 {
+                                                                if *tokens.get(index - 1).unwrap()
+                                                                    != Token::Coma
+                                                                {
+                                                                    CompilerError::SyntaxError(
+                                                                        SyntaxError::UnexpectedToken(&format!(
+                                                                            "{}. Expecting {}",
+                                                                            token.to_string(),
+                                                                            "{"
+                                                                        )),
+                                                                    )
+                                                                    .throw_with_file_info(
+                                                                        &std::env::var("file_path").unwrap(),
+                                                                        lexems.line,
+                                                                    );
+                                                                }
+                                                            }
+                                                        }
+                                                        _ => {
+                                                            CompilerError::SyntaxError(
+                                                                SyntaxError::UnexpectedToken(
+                                                                    &format!(
+                                                                        "{}. Expecting {}",
+                                                                        tkn.to_string(),
+                                                                        "{"
+                                                                    ),
+                                                                ),
+                                                            )
+                                                            .throw_with_file_info(
+                                                                &std::env::var("file_path")
+                                                                    .unwrap(),
+                                                                lexems.line,
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
@@ -408,6 +521,58 @@ fn seperate_variants(
                                             &std::env::var("file_path").unwrap(),
                                             lexems.line,
                                         );
+                                    } else {
+                                        if let Token::Identifier(_) = token {
+                                            if tokens.contains(&Token::Library) {
+                                                let mut identifier_count = 0;
+                                                for tkn in &tokens {
+                                                    match tkn {
+                                                        Token::Identifier(_) => {
+                                                            if identifier_count > 0 {
+                                                                CompilerError::SyntaxError(
+                                                                    SyntaxError::UnexpectedToken(
+                                                                        &format!(
+                                                                            "{}. Expecting {}",
+                                                                            token.to_string(),
+                                                                            "{"
+                                                                        ),
+                                                                    ),
+                                                                )
+                                                                .throw_with_file_info(
+                                                                    &std::env::var("file_path")
+                                                                        .unwrap(),
+                                                                    lexems.line,
+                                                                );
+                                                            } else {
+                                                                identifier_count += 1;
+                                                            }
+                                                        }
+                                                        _ => {}
+                                                    }
+                                                }
+                                            } else {
+                                                if let Token::Identifier(_) = combined
+                                                    .last()
+                                                    .unwrap()
+                                                    .data
+                                                    .strip_spaces()
+                                                    .last()
+                                                    .unwrap()
+                                                {
+                                                    CompilerError::SyntaxError(
+                                                        SyntaxError::UnexpectedToken(&format!(
+                                                            "{}. Expecting {}",
+                                                            token.to_string(),
+                                                            "{"
+                                                        )),
+                                                    )
+                                                    .throw_with_file_info(
+                                                        &std::env::var("file_path").unwrap(),
+                                                        lexems.line,
+                                                    );
+                                                }
+                                            }
+                                        }
                                     }
                                 }
 
