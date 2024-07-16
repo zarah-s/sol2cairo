@@ -258,7 +258,18 @@ impl TokenTrait for Token {
     }
 
     fn is_keyword(&self) -> bool {
-        KEYWORDS.contains(&self.to_string().as_str())
+        let is_keyword = KEYWORDS.contains(&self.to_string().as_str());
+        if is_keyword {
+            is_keyword
+        } else {
+            let mut keyword = false;
+            for data_type in DATA_TYPES {
+                if self.to_string().starts_with(data_type) {
+                    keyword = true;
+                }
+            }
+            keyword
+        }
     }
 
     fn is_symbol(&self) -> bool {
@@ -282,7 +293,18 @@ impl TokenTrait for &Token {
         detokenize(&self)
     }
     fn is_keyword(&self) -> bool {
-        KEYWORDS.contains(&self.to_string().as_str())
+        let is_keyword = KEYWORDS.contains(&self.to_string().as_str());
+        if is_keyword {
+            is_keyword
+        } else {
+            let mut keyword = false;
+            for data_type in DATA_TYPES {
+                if self.to_string().starts_with(data_type) {
+                    keyword = true;
+                }
+            }
+            keyword
+        }
     }
 
     fn is_symbol(&self) -> bool {
