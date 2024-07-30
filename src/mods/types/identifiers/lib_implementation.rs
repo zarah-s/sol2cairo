@@ -1,4 +1,5 @@
 use crate::mods::{
+    constants::constants::FILE_PATH,
     functions::helpers::global::validate_identifier,
     types::{
         compiler_errors::{CompilerError, SyntaxError},
@@ -46,7 +47,10 @@ pub fn parse_lib_implementations(
                     "Expecting using but found {}",
                     first_element.to_string()
                 ))
-                .throw_with_file_info(&std::env::var("file_path").unwrap(), lexem.first().unwrap().line)
+                .throw_with_file_info(
+                    &std::env::var(FILE_PATH).unwrap(),
+                    lexem.first().unwrap().line,
+                )
             }
         }
 
@@ -69,7 +73,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -82,7 +86,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -99,7 +103,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line);
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
                         }
                     }
 
@@ -107,14 +111,20 @@ pub fn parse_lib_implementations(
                         if let State::Declaration = state {
                             validate_identifier(&_identifier).unwrap_or_else(|err| {
                                 CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                                    .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line)
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    )
                             });
                             lib_identifier.push_str(_identifier);
                             state = State::LibDefinition;
                         } else if let State::For = state {
                             validate_identifier(&_identifier).unwrap_or_else(|err| {
                                 CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                                    .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line)
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    )
                             });
                             data_type.push_str(_identifier);
                             state = State::DataType;
@@ -122,7 +132,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line);
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
                         }
                     }
 
@@ -147,13 +157,16 @@ pub fn parse_lib_implementations(
                                 }
                             } else {
                                 CompilerError::SyntaxError(SyntaxError::MissingToken("]"))
-                                    .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line);
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    );
                             }
                         } else {
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -162,7 +175,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -170,7 +183,7 @@ pub fn parse_lib_implementations(
                         CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                             &_other.to_string(),
                         ))
-                        .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line);
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
                     }
                 }
             }

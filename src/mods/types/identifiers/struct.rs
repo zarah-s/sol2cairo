@@ -1,4 +1,5 @@
 use crate::mods::{
+    constants::constants::FILE_PATH,
     functions::helpers::global::{process_name, process_size, process_type, validate_identifier},
     types::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
@@ -71,7 +72,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                     first_element.to_string()
                 ))
                 .throw_with_file_info(
-                    &std::env::var("file_path").unwrap(),
+                    &std::env::var(FILE_PATH).unwrap(),
                     lexem.first().unwrap().line,
                 )
             }
@@ -102,7 +103,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                 CompilerError::SyntaxError(
                     crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
                 )
-                .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
+                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
             }
 
             if header_tokens.strip_spaces().len() != 2 {
@@ -111,7 +112,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                         header_tokens.to_string().trim(),
                     ),
                 )
-                .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
+                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
@@ -119,7 +120,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                         CompilerError::SyntaxError(
                             crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&err),
                         )
-                        .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                     });
                     struct_identifier = identifier.to_owned();
                 } else {
@@ -129,7 +130,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                             header_tokens.strip_spaces().last().unwrap().to_string()
                         )),
                     )
-                    .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 }
             }
         }
@@ -157,7 +158,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                                             )),
                                         )
                                         .throw_with_file_info(
-                                            &std::env::var("file_path").unwrap(),
+                                            &std::env::var(FILE_PATH).unwrap(),
                                             lex.line,
                                         ),
 
@@ -168,7 +169,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                                             )),
                                         )
                                         .throw_with_file_info(
-                                            &std::env::var("file_path").unwrap(),
+                                            &std::env::var(FILE_PATH).unwrap(),
                                             lex.line,
                                         ),
                                         ErrType::Unexpected => CompilerError::SyntaxError(
@@ -178,7 +179,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                                             )),
                                         )
                                         .throw_with_file_info(
-                                            &std::env::var("file_path").unwrap(),
+                                            &std::env::var(FILE_PATH).unwrap(),
                                             lex.line,
                                         ),
                                     }
@@ -201,10 +202,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                                         ";",
                                     ),
                                 )
-                                .throw_with_file_info(
-                                    &std::env::var("file_path").unwrap(),
-                                    lex.line,
-                                )
+                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                             }
                         }
 

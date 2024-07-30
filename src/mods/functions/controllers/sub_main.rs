@@ -1,6 +1,7 @@
 use std::env;
 
 use crate::mods::{
+    constants::constants::FILE_PATH,
     functions::{
         controllers::process_file_contents::process_file_contents,
         helpers::global::validate_identifier,
@@ -20,7 +21,7 @@ use crate::mods::{
 pub async fn compile_source_code(args: Vec<String>) {
     let file_path = &args.last();
     let parsable_structure = process_file_contents(&args).await;
-    env::set_var("file_path", file_path.unwrap());
+    env::set_var(FILE_PATH, file_path.unwrap());
     let mut imports: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut libraries: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut interfaces: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
@@ -53,7 +54,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                 stringified_components
             )))
             .throw_with_file_info(
-                &std::env::var("file_path").unwrap(),
+                &std::env::var(FILE_PATH).unwrap(),
                 lib_header.first().unwrap().first().unwrap().line,
             );
         }
@@ -82,7 +83,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                     CompilerError::SyntaxError(
                         crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
                     )
-                    .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 }
 
                 if header_tokens.strip_spaces().len() != 2 {
@@ -91,7 +92,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                             header_tokens.to_string().trim(),
                         ),
                     )
-                    .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 } else {
                     if let Token::Identifier(identifier) =
                         header_tokens.strip_spaces().last().unwrap()
@@ -99,7 +100,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                         validate_identifier(&identifier).unwrap_or_else(|err| {
                             CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
                                 .throw_with_file_info(
-                                    &std::env::var("file_path").unwrap(),
+                                    &std::env::var(FILE_PATH).unwrap(),
                                     header_line,
                                 )
                         });
@@ -113,7 +114,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                                 ),
                             ),
                         )
-                        .throw_with_file_info(&std::env::var("file_path").unwrap(), header_line)
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                     }
                 }
             }
@@ -287,7 +288,7 @@ fn seperate_variants(
                                     &token.to_string(),
                                 ))
                                 .throw_with_file_info(
-                                    &std::env::var("file_path").unwrap(),
+                                    &std::env::var(FILE_PATH).unwrap(),
                                     lexems.line,
                                 );
                             }
@@ -317,7 +318,7 @@ fn seperate_variants(
                         } else {
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
                                 .throw_with_file_info(
-                                    &std::env::var("file_path").unwrap(),
+                                    &std::env::var(FILE_PATH).unwrap(),
                                     lexems.line,
                                 );
                         }
@@ -326,10 +327,7 @@ fn seperate_variants(
                 Token::CloseBraces => {
                     if opened_braces_count == 0 && !is_import_brace {
                         CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
-                            .throw_with_file_info(
-                                &std::env::var("file_path").unwrap(),
-                                lexems.line,
-                            );
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lexems.line);
                     }
                     if !is_import_brace {
                         opened_braces_count -= 1;
@@ -355,7 +353,9 @@ fn seperate_variants(
                                     contracts.push(combined.clone());
                                     combined.clear();
                                 }
-                                _ => {}
+                                _ => {
+                                    unreachable!()
+                                }
                             }
                             context = VariantContext::None;
                         }
@@ -385,7 +385,7 @@ fn seperate_variants(
                                                 )),
                                             )
                                             .throw_with_file_info(
-                                                &std::env::var("file_path").unwrap(),
+                                                &std::env::var(FILE_PATH).unwrap(),
                                                 lexems.line,
                                             );
                                         }
@@ -399,7 +399,7 @@ fn seperate_variants(
                                                 )),
                                             )
                                             .throw_with_file_info(
-                                                &std::env::var("file_path").unwrap(),
+                                                &std::env::var(FILE_PATH).unwrap(),
                                                 lexems.line,
                                             );
                                         }
@@ -426,7 +426,7 @@ fn seperate_variants(
                                                         )),
                                                     )
                                                     .throw_with_file_info(
-                                                        &std::env::var("file_path").unwrap(),
+                                                        &std::env::var(FILE_PATH).unwrap(),
                                                         lexems.line,
                                                     );
                                                 }
@@ -441,7 +441,7 @@ fn seperate_variants(
                                                     )),
                                                 )
                                                 .throw_with_file_info(
-                                                    &std::env::var("file_path").unwrap(),
+                                                    &std::env::var(FILE_PATH).unwrap(),
                                                     lexems.line,
                                                 );
                                             }
@@ -461,7 +461,7 @@ fn seperate_variants(
                                                     )),
                                                 )
                                                 .throw_with_file_info(
-                                                    &std::env::var("file_path").unwrap(),
+                                                    &std::env::var(FILE_PATH).unwrap(),
                                                     lexems.line,
                                                 );
                                             } else {
@@ -483,7 +483,7 @@ fn seperate_variants(
                                                                         )),
                                                                     )
                                                                     .throw_with_file_info(
-                                                                        &std::env::var("file_path").unwrap(),
+                                                                        &std::env::var(FILE_PATH).unwrap(),
                                                                         lexems.line,
                                                                     );
                                                                 }
@@ -500,8 +500,7 @@ fn seperate_variants(
                                                                 ),
                                                             )
                                                             .throw_with_file_info(
-                                                                &std::env::var("file_path")
-                                                                    .unwrap(),
+                                                                &std::env::var(FILE_PATH).unwrap(),
                                                                 lexems.line,
                                                             );
                                                         }
@@ -518,7 +517,7 @@ fn seperate_variants(
                                             &format!("{}. Expecting {}", token.to_string(), "{"),
                                         ))
                                         .throw_with_file_info(
-                                            &std::env::var("file_path").unwrap(),
+                                            &std::env::var(FILE_PATH).unwrap(),
                                             lexems.line,
                                         );
                                     } else {
@@ -539,7 +538,7 @@ fn seperate_variants(
                                                                     ),
                                                                 )
                                                                 .throw_with_file_info(
-                                                                    &std::env::var("file_path")
+                                                                    &std::env::var(FILE_PATH)
                                                                         .unwrap(),
                                                                     lexems.line,
                                                                 );
@@ -567,7 +566,7 @@ fn seperate_variants(
                                                         )),
                                                     )
                                                     .throw_with_file_info(
-                                                        &std::env::var("file_path").unwrap(),
+                                                        &std::env::var(FILE_PATH).unwrap(),
                                                         lexems.line,
                                                     );
                                                 }
@@ -588,7 +587,7 @@ fn seperate_variants(
                     CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                         &tokens.strip_spaces()[0].to_string(),
                     ))
-                    .throw_with_file_info(&std::env::var("file_path").unwrap(), lexems.line);
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lexems.line);
                 }
             }
         }
@@ -608,7 +607,7 @@ fn seperate_variants(
             _ => ";",
         }))
         .throw_with_file_info(
-            &std::env::var("file_path").unwrap(),
+            &std::env::var(FILE_PATH).unwrap(),
             combined.last().unwrap().line,
         );
     }
@@ -778,7 +777,7 @@ fn seperate_variant_variants(
                                     &token.to_string(),
                                 ))
                                 .throw_with_file_info(
-                                    &std::env::var("file_path").unwrap(),
+                                    &std::env::var(FILE_PATH).unwrap(),
                                     _line_desc.line,
                                 );
                             }
@@ -826,7 +825,7 @@ fn seperate_variant_variants(
                             } else {
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
                                     .throw_with_file_info(
-                                        &std::env::var("file_path").unwrap(),
+                                        &std::env::var(FILE_PATH).unwrap(),
                                         _line_desc.line,
                                     );
                             }
@@ -836,7 +835,6 @@ fn seperate_variant_variants(
 
                 Token::CloseBraces => {
                     opened_braces_count -= 1;
-
                     if opened_braces_count == 1 {
                         if !tokens.is_empty() {
                             combined.push(LineDescriptions {
@@ -859,10 +857,24 @@ fn seperate_variant_variants(
                                 functions.push(combined.clone());
                                 combined.clear();
                             }
-                            _ => {}
+                            _other => {
+                                let mut stringified_error = String::new();
+                                for _combined in &combined {
+                                    stringified_error.push_str(&_combined.data.to_string());
+                                }
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                    &stringified_error,
+                                ))
+                                .throw_with_file_info(
+                                    &std::env::var(FILE_PATH).unwrap(),
+                                    combined.first().unwrap().line,
+                                );
+                            }
                         }
                         terminator_type = TerminationTypeContext::None;
                     } else if opened_braces_count == 0 {
+                        // println!("{:?}", _line_desc.data.get(index + 1));
+                        // panic!("dfsd")
                         if tokens.len() == 1 {
                             tokens.clear();
                         } else {
@@ -883,7 +895,7 @@ fn seperate_variant_variants(
                                 &tokens.strip_spaces()[0].to_string(),
                             ))
                             .throw_with_file_info(
-                                &std::env::var("file_path").unwrap(),
+                                &std::env::var(FILE_PATH).unwrap(),
                                 _line_desc.line,
                             );
                         }
@@ -896,7 +908,7 @@ fn seperate_variant_variants(
                                             &tokens.strip_spaces()[0].to_string(),
                                         ))
                                         .throw_with_file_info(
-                                            &std::env::var("file_path").unwrap(),
+                                            &std::env::var(FILE_PATH).unwrap(),
                                             _line_desc.line,
                                         );
                                     }
@@ -926,7 +938,7 @@ fn seperate_variant_variants(
             _ => ";",
         }))
         .throw_with_file_info(
-            &std::env::var("file_path").unwrap(),
+            &std::env::var(FILE_PATH).unwrap(),
             combined.last().unwrap().line,
         );
     }
