@@ -139,7 +139,7 @@ pub async fn compile_source_code(args: Vec<String>) {
     }
 
     // for contract in contracts {
-    //     let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
+    //     let (structs, vars, enums, functions, errors, lib_implementations, contract_header) =
     //         seperate_variant_variants(contract);
 
     //     println!(
