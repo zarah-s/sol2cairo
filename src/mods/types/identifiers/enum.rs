@@ -1,15 +1,17 @@
 use crate::mods::{
+    constants::constants::FILE_PATH,
     functions::helpers::global::validate_identifier,
     types::{
         compiler_errors::{CompilerError, SyntaxError},
         line_descriptors::LineDescriptions,
-        token::{Token, TokenTrait, VecExtension},
+        token::{TTokenTrait, TVecExtension, Token},
     },
 };
 
 #[derive(Debug)]
 pub struct EnumIdentifier {
     pub identifier: String,
+    pub line: String,
     pub variants: Vec<String>,
 }
 
@@ -42,7 +44,10 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                     "Expecting enum but found {}",
                     first_element.to_string()
                 ))
-                .throw_with_file_info("Contract.sol", lexem.first().unwrap().line)
+                .throw_with_file_info(
+                    &std::env::var(FILE_PATH).unwrap(),
+                    lexem.first().unwrap().line,
+                )
             }
         }
         let mut header_index_stop = 0;
@@ -70,7 +75,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                 CompilerError::SyntaxError(
                     crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
                 )
-                .throw_with_file_info("Contract.sol", header_line)
+                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
             }
 
             if header_tokens.strip_spaces().len() != 2 {
@@ -79,13 +84,13 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                         header_tokens.to_string().trim(),
                     ),
                 )
-                .throw_with_file_info("Contract.sol", header_line)
+                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
                     validate_identifier(&identifier).unwrap_or_else(|err| {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                            .throw_with_file_info("Contract.sol", header_line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                     });
                     enum_identifier = identifier.to_owned();
                 } else {
@@ -95,7 +100,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                             header_tokens.strip_spaces().last().unwrap().to_string()
                         )),
                     )
-                    .throw_with_file_info("Contract.sol", header_line)
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 }
             }
         }
@@ -106,8 +111,8 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
             let mut skipped_count = 0;
             let mut opened_brace = 1; /* validate header skips one count */
             let mut enum_state = EnumState::None;
-            for lex in lexem {
-                for token in lex.data {
+            for lex in &lexem {
+                for token in &lex.data {
                     if skipped_count < header_index_stop {
                         skipped_count += 1;
                         continue;
@@ -119,7 +124,10 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                             if let EnumState::Coma | EnumState::None = enum_state {
                                 let _ = validate_identifier(&_variant).unwrap_or_else(|err| {
                                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                                        .throw_with_file_info("Contract.sol", lex.line)
+                                        .throw_with_file_info(
+                                            &std::env::var(FILE_PATH).unwrap(),
+                                            lex.line,
+                                        )
                                 });
                                 variants.push(_variant.to_owned());
                                 enum_state = EnumState::Identifier;
@@ -127,7 +135,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info("Contract.sol", lex.line)
+                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                             }
                         }
                         Token::Coma => {
@@ -137,7 +145,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info("Contract.sol", lex.line)
+                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                             }
                         }
                         Token::CloseBraces => {
@@ -146,19 +154,20 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info("Contract.sol", lex.line)
+                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                             }
                         }
                         _other => CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                             &_other.to_string(),
                         ))
-                        .throw_with_file_info("Contract.sol", lex.line),
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line),
                     }
                 }
             }
 
             let enum_construct = EnumIdentifier {
                 identifier: enum_identifier,
+                line: lexem[0].line.to_string(),
                 variants,
             };
 

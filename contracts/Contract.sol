@@ -6,7 +6,9 @@ library Name {
     jane owen
      = "sdf";
 
-    uint j;
+     sdfd[] public constant jane=[1,2,3,4,5];
+
+    uint sdf;
 
     function oi() {
         {}
@@ -99,8 +101,8 @@ contract
     }
 }
 
-contract SendEther {
-    function sendViaTransfer(address payable _to) public payable {
+contract SendEther 
+{    function sendViaTransfer(address payable _to) public payable {
         // This function is no longer recommended for sending Ether.
         _to.transfer(msg.value);
     }
@@ -122,10 +124,11 @@ contract SendEther {
 
 import "../IT.sol";
 
-contract Yds {}
+contract Yds is OI{
+     sld oi;
+}
 
-library Lb
- {
+library Lb{ sld oi;
     using Oi for uint[];
     error Lib_ERROR(Oi,Shit,uint256,_);
 

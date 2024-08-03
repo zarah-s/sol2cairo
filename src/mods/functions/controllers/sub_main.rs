@@ -1,22 +1,30 @@
+use std::env;
+
 use crate::mods::{
+    constants::constants::FILE_PATH,
     functions::{
         controllers::process_file_contents::process_file_contents,
         helpers::global::validate_identifier,
     },
     types::{
         compiler_errors::{CompilerError, SyntaxError},
-        context::{ContextFn, TerminationTypeContext, VariantContext},
+        context::{TContextFn, TerminationTypeContext, VariantContext},
         identifiers::{
-            custom_error::parse_custom_errors, lib_implementation::parse_lib_implementations,
-            r#enum::parse_enums, r#struct::parse_structs,
+            custom_error::parse_custom_errors,
+            lib_implementation::parse_lib_implementations,
+            r#enum::parse_enums,
+            r#struct::{StructIdentifier, TStructIdentifier},
+            variable::parse_variables,
         },
-        line_descriptors::{LineDescriptions, StringDescriptor, TokenDescriptor},
-        token::{Token, TokenTrait, VecExtension},
+        line_descriptors::{LineDescriptions, TStringDescriptor, TTokenDescriptor},
+        token::{TTokenTrait, TVecExtension, Token},
     },
 };
 
 pub async fn compile_source_code(args: Vec<String>) {
-    let parsable_structure = process_file_contents(args).await;
+    let file_path = &args.last();
+    let parsable_structure = process_file_contents(&args).await;
+    env::set_var(FILE_PATH, file_path.unwrap());
     let mut imports: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut libraries: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut interfaces: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
@@ -49,7 +57,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                 stringified_components
             )))
             .throw_with_file_info(
-                "Contract.sol",
+                &std::env::var(FILE_PATH).unwrap(),
                 lib_header.first().unwrap().first().unwrap().line,
             );
         }
@@ -78,7 +86,7 @@ pub async fn compile_source_code(args: Vec<String>) {
                     CompilerError::SyntaxError(
                         crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
                     )
-                    .throw_with_file_info("Contract.sol", header_line)
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 }
 
                 if header_tokens.strip_spaces().len() != 2 {
@@ -87,14 +95,17 @@ pub async fn compile_source_code(args: Vec<String>) {
                             header_tokens.to_string().trim(),
                         ),
                     )
-                    .throw_with_file_info("Contract.sol", header_line)
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 } else {
                     if let Token::Identifier(identifier) =
                         header_tokens.strip_spaces().last().unwrap()
                     {
                         validate_identifier(&identifier).unwrap_or_else(|err| {
                             CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                                .throw_with_file_info("Contract.sol", header_line)
+                                .throw_with_file_info(
+                                    &std::env::var(FILE_PATH).unwrap(),
+                                    header_line,
+                                )
                         });
                         lib_identifier = identifier.to_owned();
                     } else {
@@ -106,19 +117,20 @@ pub async fn compile_source_code(args: Vec<String>) {
                                 ),
                             ),
                         )
-                        .throw_with_file_info("Contract.sol", header_line)
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                     }
                 }
             }
         }
 
-        let _ = parse_structs(structs);
+        let _val = StructIdentifier::parse_structs(structs);
         let _ = parse_enums(enums);
 
         let _ = parse_custom_errors(errors);
 
         let _ = parse_lib_implementations(lib_implementations);
-        println!("{:#?}", lib_identifier);
+        parse_variables(vars);
+        // println!("{:#?}", );
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
@@ -278,7 +290,10 @@ fn seperate_variants(
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info("Contract.sol", lexems.line);
+                                .throw_with_file_info(
+                                    &std::env::var(FILE_PATH).unwrap(),
+                                    lexems.line,
+                                );
                             }
                         }
                         context = VariantContext::None;
@@ -304,13 +319,19 @@ fn seperate_variants(
                                 opened_braces_count += 1;
                             }
                         } else {
-                            // println!("{:?}", tokens);
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
-                                .throw_with_file_info("Contract.sol", lexems.line);
+                                .throw_with_file_info(
+                                    &std::env::var(FILE_PATH).unwrap(),
+                                    lexems.line,
+                                );
                         }
                     }
                 }
                 Token::CloseBraces => {
+                    if opened_braces_count == 0 && !is_import_brace {
+                        CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lexems.line);
+                    }
                     if !is_import_brace {
                         opened_braces_count -= 1;
                         if opened_braces_count == 0 {
@@ -335,7 +356,9 @@ fn seperate_variants(
                                     contracts.push(combined.clone());
                                     combined.clear();
                                 }
-                                _ => {}
+                                _ => {
+                                    unreachable!()
+                                }
                             }
                             context = VariantContext::None;
                         }
@@ -344,7 +367,222 @@ fn seperate_variants(
                     }
                 }
 
-                _ => {}
+                Token::Space => {}
+
+                _ => {
+                    if opened_braces_count == 0 {
+                        match context {
+                            VariantContext::Import
+                            | VariantContext::Header
+                            | VariantContext::Error => {}
+
+                            _ => match context {
+                                VariantContext::Contract | VariantContext::Interface => {
+                                    if token.is_keyword() {
+                                        if *token != Token::Is {
+                                            CompilerError::SyntaxError(
+                                                SyntaxError::UnexpectedToken(&format!(
+                                                    "{}. Expecting {}",
+                                                    token.to_string(),
+                                                    "{"
+                                                )),
+                                            )
+                                            .throw_with_file_info(
+                                                &std::env::var(FILE_PATH).unwrap(),
+                                                lexems.line,
+                                            );
+                                        }
+                                    } else if token.is_symbol() {
+                                        if *token != Token::Coma {
+                                            CompilerError::SyntaxError(
+                                                SyntaxError::UnexpectedToken(&format!(
+                                                    "{}. Expecting {}",
+                                                    token.to_string(),
+                                                    "{"
+                                                )),
+                                            )
+                                            .throw_with_file_info(
+                                                &std::env::var(FILE_PATH).unwrap(),
+                                                lexems.line,
+                                            );
+                                        }
+                                    } else {
+                                        if tokens.contains(&Token::Contract)
+                                            || tokens.contains(&Token::Interface)
+                                        {
+                                            let stripped_spaces = tokens.strip_spaces();
+                                            if let Token::Identifier(_) = token {
+                                                if stripped_spaces[stripped_spaces.len() - 2]
+                                                    != Token::Interface
+                                                    && stripped_spaces[stripped_spaces.len() - 2]
+                                                        != Token::Contract
+                                                    && stripped_spaces[stripped_spaces.len() - 2]
+                                                        != Token::Coma
+                                                    && stripped_spaces[stripped_spaces.len() - 2]
+                                                        != Token::Is
+                                                {
+                                                    CompilerError::SyntaxError(
+                                                        SyntaxError::UnexpectedToken(&format!(
+                                                            "{}. Expecting {}",
+                                                            token.to_string(),
+                                                            "{"
+                                                        )),
+                                                    )
+                                                    .throw_with_file_info(
+                                                        &std::env::var(FILE_PATH).unwrap(),
+                                                        lexems.line,
+                                                    );
+                                                }
+                                            } else if let Token::Is | Token::Coma = token {
+                                                // TODO: NOTHING
+                                            } else {
+                                                CompilerError::SyntaxError(
+                                                    SyntaxError::UnexpectedToken(&format!(
+                                                        "{}. Expecting {}",
+                                                        token.to_string(),
+                                                        "{"
+                                                    )),
+                                                )
+                                                .throw_with_file_info(
+                                                    &std::env::var(FILE_PATH).unwrap(),
+                                                    lexems.line,
+                                                );
+                                            }
+                                        } else {
+                                            let last_token =
+                                                combined.last().unwrap().data.last().unwrap();
+                                            if *last_token != Token::Interface
+                                                && *last_token != Token::Contract
+                                                && *last_token != Token::Coma
+                                                && *last_token != Token::Is
+                                            {
+                                                CompilerError::SyntaxError(
+                                                    SyntaxError::UnexpectedToken(&format!(
+                                                        "{}. Expecting {}",
+                                                        token.to_string(),
+                                                        "{"
+                                                    )),
+                                                )
+                                                .throw_with_file_info(
+                                                    &std::env::var(FILE_PATH).unwrap(),
+                                                    lexems.line,
+                                                );
+                                            } else {
+                                                for (index, tkn) in
+                                                    tokens.strip_spaces().iter().enumerate()
+                                                {
+                                                    match tkn {
+                                                        Token::Coma => {}
+                                                        Token::Identifier(_) => {
+                                                            if index > 0 {
+                                                                if *tokens.get(index - 1).unwrap()
+                                                                    != Token::Coma
+                                                                {
+                                                                    CompilerError::SyntaxError(
+                                                                        SyntaxError::UnexpectedToken(&format!(
+                                                                            "{}. Expecting {}",
+                                                                            token.to_string(),
+                                                                            "{"
+                                                                        )),
+                                                                    )
+                                                                    .throw_with_file_info(
+                                                                        &std::env::var(FILE_PATH).unwrap(),
+                                                                        lexems.line,
+                                                                    );
+                                                                }
+                                                            }
+                                                        }
+                                                        _ => {
+                                                            CompilerError::SyntaxError(
+                                                                SyntaxError::UnexpectedToken(
+                                                                    &format!(
+                                                                        "{}. Expecting {}",
+                                                                        tkn.to_string(),
+                                                                        "{"
+                                                                    ),
+                                                                ),
+                                                            )
+                                                            .throw_with_file_info(
+                                                                &std::env::var(FILE_PATH).unwrap(),
+                                                                lexems.line,
+                                                            );
+                                                        }
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                VariantContext::Library => {
+                                    if token.is_keyword() || token.is_symbol() {
+                                        CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
+                                            &format!("{}. Expecting {}", token.to_string(), "{"),
+                                        ))
+                                        .throw_with_file_info(
+                                            &std::env::var(FILE_PATH).unwrap(),
+                                            lexems.line,
+                                        );
+                                    } else {
+                                        if let Token::Identifier(_) = token {
+                                            if tokens.contains(&Token::Library) {
+                                                let mut identifier_count = 0;
+                                                for tkn in &tokens {
+                                                    match tkn {
+                                                        Token::Identifier(_) => {
+                                                            if identifier_count > 0 {
+                                                                CompilerError::SyntaxError(
+                                                                    SyntaxError::UnexpectedToken(
+                                                                        &format!(
+                                                                            "{}. Expecting {}",
+                                                                            token.to_string(),
+                                                                            "{"
+                                                                        ),
+                                                                    ),
+                                                                )
+                                                                .throw_with_file_info(
+                                                                    &std::env::var(FILE_PATH)
+                                                                        .unwrap(),
+                                                                    lexems.line,
+                                                                );
+                                                            } else {
+                                                                identifier_count += 1;
+                                                            }
+                                                        }
+                                                        _ => {}
+                                                    }
+                                                }
+                                            } else {
+                                                if let Token::Identifier(_) = combined
+                                                    .last()
+                                                    .unwrap()
+                                                    .data
+                                                    .strip_spaces()
+                                                    .last()
+                                                    .unwrap()
+                                                {
+                                                    CompilerError::SyntaxError(
+                                                        SyntaxError::UnexpectedToken(&format!(
+                                                            "{}. Expecting {}",
+                                                            token.to_string(),
+                                                            "{"
+                                                        )),
+                                                    )
+                                                    .throw_with_file_info(
+                                                        &std::env::var(FILE_PATH).unwrap(),
+                                                        lexems.line,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                                _ => {}
+                            },
+                        }
+                    }
+                }
             }
 
             if let VariantContext::None = context {
@@ -352,7 +590,7 @@ fn seperate_variants(
                     CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                         &tokens.strip_spaces()[0].to_string(),
                     ))
-                    .throw_with_file_info("Contract.sol", lexems.line);
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lexems.line);
                 }
             }
         }
@@ -371,12 +609,15 @@ fn seperate_variants(
             VariantContext::Contract | VariantContext::Interface | VariantContext::Library => "}",
             _ => ";",
         }))
-        .throw_with_file_info("Contract.sol", combined.last().unwrap().line);
+        .throw_with_file_info(
+            &std::env::var(FILE_PATH).unwrap(),
+            combined.last().unwrap().line,
+        );
     }
 }
 
 /* VALIDATES CLASH DUE TO MISSING TOKEN E.G ";" OR "}" */
-fn validate_clash<T: ContextFn>(
+fn validate_clash<T: TContextFn>(
     context: T,
     tokens: &Vec<Token>,
     lexems: &Option<&LineDescriptions<String>>,
@@ -538,7 +779,10 @@ fn seperate_variant_variants(
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info("Contract.sol", _line_desc.line);
+                                .throw_with_file_info(
+                                    &std::env::var(FILE_PATH).unwrap(),
+                                    _line_desc.line,
+                                );
                             }
                         }
                         terminator_type = TerminationTypeContext::None;
@@ -583,7 +827,10 @@ fn seperate_variant_variants(
                                 combined.clear();
                             } else {
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken("{"))
-                                    .throw_with_file_info("Contract.sol", _line_desc.line);
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        _line_desc.line,
+                                    );
                             }
                         }
                     }
@@ -591,7 +838,6 @@ fn seperate_variant_variants(
 
                 Token::CloseBraces => {
                     opened_braces_count -= 1;
-
                     if opened_braces_count == 1 {
                         if !tokens.is_empty() {
                             combined.push(LineDescriptions {
@@ -614,10 +860,24 @@ fn seperate_variant_variants(
                                 functions.push(combined.clone());
                                 combined.clear();
                             }
-                            _ => {}
+                            _other => {
+                                let mut stringified_error = String::new();
+                                for _combined in &combined {
+                                    stringified_error.push_str(&_combined.data.to_string());
+                                }
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                    &stringified_error,
+                                ))
+                                .throw_with_file_info(
+                                    &std::env::var(FILE_PATH).unwrap(),
+                                    combined.first().unwrap().line,
+                                );
+                            }
                         }
                         terminator_type = TerminationTypeContext::None;
                     } else if opened_braces_count == 0 {
+                        // println!("{:?}", _line_desc.data.get(index + 1));
+                        // panic!("dfsd")
                         if tokens.len() == 1 {
                             tokens.clear();
                         } else {
@@ -637,7 +897,10 @@ fn seperate_variant_variants(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &tokens.strip_spaces()[0].to_string(),
                             ))
-                            .throw_with_file_info("Contract.sol", _line_desc.line);
+                            .throw_with_file_info(
+                                &std::env::var(FILE_PATH).unwrap(),
+                                _line_desc.line,
+                            );
                         }
                         Some(initial) => {
                             if opened_braces_count > 0 {
@@ -647,7 +910,10 @@ fn seperate_variant_variants(
                                         CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                             &tokens.strip_spaces()[0].to_string(),
                                         ))
-                                        .throw_with_file_info("Contract.sol", _line_desc.line);
+                                        .throw_with_file_info(
+                                            &std::env::var(FILE_PATH).unwrap(),
+                                            _line_desc.line,
+                                        );
                                     }
                                 }
                             }
@@ -674,7 +940,10 @@ fn seperate_variant_variants(
             | TerminationTypeContext::Enum => "}",
             _ => ";",
         }))
-        .throw_with_file_info("Contract.sol", combined.last().unwrap().line);
+        .throw_with_file_info(
+            &std::env::var(FILE_PATH).unwrap(),
+            combined.last().unwrap().line,
+        );
     }
 
     (

@@ -2,7 +2,7 @@ use crate::mods::{
     functions::helpers::global::{extract_data_type_from_token, process_size, process_type},
     types::{
         compiler_errors::ErrType,
-        token::{Token, TokenTrait, VecExtension, Visibility},
+        token::{TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
 

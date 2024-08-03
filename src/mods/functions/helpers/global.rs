@@ -1,9 +1,8 @@
 use regex::Regex;
 
 use crate::mods::types::{
-    compiler_errors::{CompilerError, ErrType},
-    line_descriptors::LineDescriptions,
-    token::{Token, TokenTrait, VecExtension},
+    compiler_errors::ErrType,
+    token::{TTokenTrait, TVecExtension, Token},
 };
 
 pub fn extract_data_type_from_token(token: &Token) -> Option<&Token> {

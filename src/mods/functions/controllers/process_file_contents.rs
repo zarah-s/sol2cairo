@@ -7,7 +7,7 @@ use crate::mods::types::{
     line_descriptors::LineDescriptions,
 };
 
-pub async fn process_file_contents(args: Vec<String>) -> Vec<LineDescriptions<String>> {
+pub async fn process_file_contents(args: &Vec<String>) -> Vec<LineDescriptions<String>> {
     /* CHECK FOR VALID ARGUMENTS */
     if args.len() < 2 {
         CompilerError::IOError(IOError::IOError("Missing file path")).throw();

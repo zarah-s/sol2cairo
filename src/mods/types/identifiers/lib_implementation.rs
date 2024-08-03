@@ -1,15 +1,17 @@
 use crate::mods::{
+    constants::constants::FILE_PATH,
     functions::helpers::global::validate_identifier,
     types::{
         compiler_errors::{CompilerError, SyntaxError},
         line_descriptors::LineDescriptions,
-        token::{Token, TokenTrait},
+        token::{TTokenTrait, Token},
     },
 };
 
 #[derive(Debug)]
 pub struct LibraryImplementation {
     pub library_identifier: String,
+    pub line: String,
     pub data_type: String,
     pub is_array: bool,
     pub array_size: Option<String>,
@@ -45,7 +47,10 @@ pub fn parse_lib_implementations(
                     "Expecting using but found {}",
                     first_element.to_string()
                 ))
-                .throw_with_file_info("Contract.sol", lexem.first().unwrap().line)
+                .throw_with_file_info(
+                    &std::env::var(FILE_PATH).unwrap(),
+                    lexem.first().unwrap().line,
+                )
             }
         }
 
@@ -68,7 +73,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info("Contract.sol", lex.line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -81,7 +86,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info("Contract.sol", lex.line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -98,7 +103,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info("Contract.sol", lex.line);
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
                         }
                     }
 
@@ -106,14 +111,20 @@ pub fn parse_lib_implementations(
                         if let State::Declaration = state {
                             validate_identifier(&_identifier).unwrap_or_else(|err| {
                                 CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                                    .throw_with_file_info("Contract.sol", lex.line)
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    )
                             });
                             lib_identifier.push_str(_identifier);
                             state = State::LibDefinition;
                         } else if let State::For = state {
                             validate_identifier(&_identifier).unwrap_or_else(|err| {
                                 CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                                    .throw_with_file_info("Contract.sol", lex.line)
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    )
                             });
                             data_type.push_str(_identifier);
                             state = State::DataType;
@@ -121,7 +132,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info("Contract.sol", lex.line);
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
                         }
                     }
 
@@ -133,9 +144,9 @@ pub fn parse_lib_implementations(
                                 .position(|pred| *pred == Token::CloseSquareBracket);
                             if let Some(_close_index) = close_index {
                                 let slice = &lex.data[index + 1..][..*_close_index];
-                                let mut stringified_array_size = String::new();
 
                                 if !slice.is_empty() {
+                                    let mut stringified_array_size = String::new();
                                     pad = index + 1 + _close_index + 1;
                                     for slc in slice {
                                         stringified_array_size.push_str(&slc.to_string());
@@ -146,13 +157,16 @@ pub fn parse_lib_implementations(
                                 }
                             } else {
                                 CompilerError::SyntaxError(SyntaxError::MissingToken("]"))
-                                    .throw_with_file_info("Contract.sol", lex.line);
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    );
                             }
                         } else {
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info("Contract.sol", lex.line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -161,7 +175,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info("Contract.sol", lex.line)
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -169,7 +183,7 @@ pub fn parse_lib_implementations(
                         CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                             &_other.to_string(),
                         ))
-                        .throw_with_file_info("Contract.sol", lex.line);
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
                     }
                 }
             }
@@ -177,6 +191,7 @@ pub fn parse_lib_implementations(
 
         let impl_construct = LibraryImplementation {
             array_size,
+            line: lexem[0].line.to_string(),
             data_type,
             is_array,
             library_identifier: lib_identifier,
