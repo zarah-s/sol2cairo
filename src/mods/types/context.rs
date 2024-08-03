@@ -2,7 +2,7 @@ use crate::mods::constants::constants::FILE_PATH;
 
 use super::{
     compiler_errors::{CompilerError, SyntaxError},
-    line_descriptors::{LineDescriptions, StringDescriptor},
+    line_descriptors::{LineDescriptions, TStringDescriptor},
     token::Token,
 };
 
@@ -28,7 +28,7 @@ pub enum TerminationTypeContext {
     Error,
 }
 
-pub trait ContextFn {
+pub trait TContextFn {
     fn validate_clash(
         &self,
         tokens: &Vec<Token>,
@@ -37,7 +37,7 @@ pub trait ContextFn {
     );
 }
 
-impl ContextFn for VariantContext {
+impl TContextFn for VariantContext {
     fn validate_clash(
         &self,
         tokens: &Vec<Token>,
@@ -58,7 +58,7 @@ impl ContextFn for VariantContext {
     }
 }
 
-impl ContextFn for TerminationTypeContext {
+impl TContextFn for TerminationTypeContext {
     fn validate_clash(
         &self,
         tokens: &Vec<Token>,

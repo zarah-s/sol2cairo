@@ -157,7 +157,7 @@ impl Visibility {
     }
 }
 
-pub trait TokenTrait {
+pub trait TTokenTrait {
     fn to_string(&self) -> String;
     fn extract_visibility(&self) -> Visibility;
     fn extract_mutability(&self) -> Mutability;
@@ -165,17 +165,17 @@ pub trait TokenTrait {
     fn is_keyword(&self) -> bool;
 }
 
-pub trait VecExtension {
+pub trait TVecExtension {
     fn to_string(&self) -> String;
     fn strip_spaces(&self) -> Self;
 }
 
-pub trait StringExtension {
+pub trait TStringExtension {
     fn tokenize(&self) -> Token;
     fn lex(&self) -> Vec<Token>;
 }
 
-impl VecExtension for Vec<Token> {
+impl TVecExtension for Vec<Token> {
     fn to_string(&self) -> String {
         let mut stringified = String::new();
         for _token in self.iter() {
@@ -200,7 +200,7 @@ impl VecExtension for Vec<Token> {
     }
 }
 
-impl VecExtension for Vec<&Token> {
+impl TVecExtension for Vec<&Token> {
     fn to_string(&self) -> String {
         let mut stringified = String::new();
         for _token in self.iter() {
@@ -224,7 +224,7 @@ impl VecExtension for Vec<&Token> {
     }
 }
 
-impl StringExtension for String {
+impl TStringExtension for String {
     fn tokenize(&self) -> Token {
         tokenize(&self)
     }
@@ -234,7 +234,7 @@ impl StringExtension for String {
     }
 }
 
-impl StringExtension for &str {
+impl TStringExtension for &str {
     fn tokenize(&self) -> Token {
         tokenize(&self)
     }
@@ -243,7 +243,7 @@ impl StringExtension for &str {
     }
 }
 
-impl StringExtension for char {
+impl TStringExtension for char {
     fn tokenize(&self) -> Token {
         tokenize(&self.to_string().as_str())
     }
@@ -252,7 +252,7 @@ impl StringExtension for char {
     }
 }
 
-impl TokenTrait for Token {
+impl TTokenTrait for Token {
     fn to_string(&self) -> String {
         detokenize(&self)
     }
@@ -288,7 +288,7 @@ impl TokenTrait for Token {
     }
 }
 
-impl TokenTrait for &Token {
+impl TTokenTrait for &Token {
     fn to_string(&self) -> String {
         detokenize(&self)
     }

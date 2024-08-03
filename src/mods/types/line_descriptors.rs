@@ -1,19 +1,19 @@
-use super::token::{StringExtension, Token, VecExtension};
+use super::token::{TStringExtension, TVecExtension, Token};
 
 #[derive(Debug, Clone)]
 pub struct LineDescriptions<T> {
     pub line: i32,
     pub data: T,
 }
-pub trait StringDescriptor {
+pub trait TStringDescriptor {
     fn lex(&self) -> LineDescriptions<Vec<Token>>;
 }
 
-pub trait TokenDescriptor {
+pub trait TTokenDescriptor {
     fn to_string(&self) -> LineDescriptions<String>;
 }
 
-impl StringDescriptor for LineDescriptions<String> {
+impl TStringDescriptor for LineDescriptions<String> {
     fn lex(&self) -> LineDescriptions<Vec<Token>> {
         LineDescriptions {
             line: self.line,
@@ -22,7 +22,7 @@ impl StringDescriptor for LineDescriptions<String> {
     }
 }
 
-impl TokenDescriptor for LineDescriptions<Vec<Token>> {
+impl TTokenDescriptor for LineDescriptions<Vec<Token>> {
     fn to_string(&self) -> LineDescriptions<String> {
         LineDescriptions {
             line: self.line,

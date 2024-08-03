@@ -1,11 +1,114 @@
 use crate::mods::{
+    constants::constants::FILE_PATH,
     functions::helpers::global::validate_identifier,
     types::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         line_descriptors::LineDescriptions,
-        token::{Mutability, Token, TokenTrait, VecExtension, Visibility},
+        token::{Mutability, TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
+
+enum TypeCast {
+    Value(String),
+    Cast(Box<TypeCast>),
+}
+
+enum StringValue {
+    Literal(String),
+    TypeCast(TypeCast),
+}
+
+enum IntegerValue {
+    Literal(String),
+    TypeCast(TypeCast),
+}
+
+enum BytesValue {
+    Literal(String),
+    TypeCast(TypeCast),
+}
+
+enum AddressValue {
+    Literal(String),
+    TypeCast(TypeCast),
+}
+
+enum BooleanValue {
+    Literal(String),
+    TypeCast(TypeCast),
+}
+
+enum ExpressionValue {
+    Ternary(String),
+    Math(String),
+}
+
+enum FunctionValueType {
+    Global,
+    Defined,
+}
+
+struct ContractInstanceValue {
+    pub identifier: String,
+    pub arguments: Vec<VariableValue>,
+}
+
+struct ContractFunctionValue {
+    pub identifier: String,
+    pub arguments: Vec<VariableValue>,
+    pub function_identifier: String,
+    pub function_args: Vec<VariableValue>,
+}
+
+enum Contractvalue {
+    ContractFunctionValue(ContractFunctionValue),
+    ContractInstanceValue(ContractInstanceValue),
+}
+
+struct FunctionValue {
+    pub identifier: String,
+    pub arguments: Vec<VariableValue>,
+    pub r#type: FunctionValueType,
+}
+struct VariantValue {
+    pub identifier: String,
+    pub variants: Vec<String>,
+}
+
+struct StructInstanceValue {
+    pub identifier: String,
+    pub variants: Vec<[String; 2]>,
+}
+
+enum StructValue {
+    Instance(StructInstanceValue),
+    Variant(VariantValue),
+}
+
+struct InstanceValue {
+    pub r#type: String,
+    pub length: String,
+}
+
+enum VariableValue {
+    StringValue(StringValue),
+    ArrayValue(Vec<VariableValue>),
+    IntegerValue(IntegerValue),
+    BytesValue(BytesValue),
+    AddressValue(AddressValue),
+    BooleanValue(BooleanValue),
+    FunctionValue(FunctionValue),
+    StructValue(StructValue),
+    ExpressionValue(ExpressionValue),
+    StructOrFunctionValue(FunctionValue),
+    LibOrStructOrEnumValue(VariantValue),
+    MappingValue(VariantValue),
+    GlobalVarValue(VariantValue),
+    IdentifierValue(String),
+    Context(Box<VariableValue>),
+    Contractvalue(Contractvalue),
+    InstanceValue(InstanceValue),
+}
 
 pub struct VariableIdentifier {
     pub data_type: String,
@@ -32,7 +135,6 @@ enum VariableState {
 pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<VariableIdentifier> {
     let mut variables = Vec::new();
 
-    // println!("{:?}", lexems);
     for lexem in lexems {
         let mut combined: Vec<Token> = Vec::new();
         for lex in lexem {
@@ -50,7 +152,10 @@ pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Va
                                             combined.to_string()
                                         )),
                                     )
-                                    .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line),
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    ),
 
                                     ErrType::Syntax => CompilerError::SyntaxError(
                                         SyntaxError::SyntaxError(&format!(
@@ -59,7 +164,10 @@ pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Va
                                             combined.to_string()
                                         )),
                                     )
-                                    .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line),
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    ),
                                     ErrType::Unexpected => CompilerError::SyntaxError(
                                         SyntaxError::UnexpectedToken(&format!(
                                             "{} for identifier {}",
@@ -67,13 +175,15 @@ pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Va
                                             combined.to_string()
                                         )),
                                     )
-                                    .throw_with_file_info(&std::env::var("file_path").unwrap(), lex.line),
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    ),
                                 }
                                 unreachable!()
                             },
                         );
                     }
-                    // Token::Identifier(_identifier) => {}
                     _ => combined.push(token),
                 }
             }
@@ -275,7 +385,7 @@ fn process_var_construct(combined: &Vec<Token>) -> Result<(), (String, ErrType)>
                             err,
                             combined.to_string()
                         )))
-                        .throw_with_file_info(&std::env::var("file_path").unwrap(), 0)
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), 0)
                     });
                     variable_identifier.push_str(&_identifier);
                     state = VariableState::Identifier;
@@ -299,10 +409,13 @@ fn process_var_construct(combined: &Vec<Token>) -> Result<(), (String, ErrType)>
         }
     }
 
-    if !raw_value.is_empty() {}
-    println!("{:?}", raw_value.to_string());
+    if !raw_value.is_empty() {
+        process_variable_value(raw_value)
+    }
 
     Ok(())
 }
 
-fn process_variable_value(raw_value: Vec<Token>) {}
+fn process_variable_value(raw_value: Vec<Token>) {
+    println!("{:?}", raw_value.to_string());
+}

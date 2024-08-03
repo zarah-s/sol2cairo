@@ -8,13 +8,16 @@ use crate::mods::{
     },
     types::{
         compiler_errors::{CompilerError, SyntaxError},
-        context::{ContextFn, TerminationTypeContext, VariantContext},
+        context::{TContextFn, TerminationTypeContext, VariantContext},
         identifiers::{
-            custom_error::parse_custom_errors, lib_implementation::parse_lib_implementations,
-            r#enum::parse_enums, r#struct::parse_structs, variable::parse_variables,
+            custom_error::parse_custom_errors,
+            lib_implementation::parse_lib_implementations,
+            r#enum::parse_enums,
+            r#struct::{StructIdentifier, TStructIdentifier},
+            variable::parse_variables,
         },
-        line_descriptors::{LineDescriptions, StringDescriptor, TokenDescriptor},
-        token::{Token, TokenTrait, VecExtension},
+        line_descriptors::{LineDescriptions, TStringDescriptor, TTokenDescriptor},
+        token::{TTokenTrait, TVecExtension, Token},
     },
 };
 
@@ -120,14 +123,14 @@ pub async fn compile_source_code(args: Vec<String>) {
             }
         }
 
-        let _ = parse_structs(structs);
+        let _val = StructIdentifier::parse_structs(structs);
         let _ = parse_enums(enums);
 
         let _ = parse_custom_errors(errors);
 
         let _ = parse_lib_implementations(lib_implementations);
         parse_variables(vars);
-        // println!("{:#?}", parse);
+        // println!("{:#?}", );
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
@@ -614,7 +617,7 @@ fn seperate_variants(
 }
 
 /* VALIDATES CLASH DUE TO MISSING TOKEN E.G ";" OR "}" */
-fn validate_clash<T: ContextFn>(
+fn validate_clash<T: TContextFn>(
     context: T,
     tokens: &Vec<Token>,
     lexems: &Option<&LineDescriptions<String>>,

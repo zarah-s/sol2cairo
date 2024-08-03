@@ -5,16 +5,21 @@ use crate::mods::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         identifiers::mapping::{process_mapping, Mapping},
         line_descriptors::LineDescriptions,
-        token::{Token, TokenTrait, VecExtension, Visibility},
+        token::{TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
 
 use super::mapping::{MappingHeader, MappingIdentifier};
 
+pub trait TStructIdentifier {
+    fn is_storage(&self) -> bool;
+    fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier>;
+}
+
 #[derive(Debug)]
 struct StructHeader {
     pub identifier: String,
-    pub is_storage: bool,
+    // pub is_storage: bool,
 }
 
 #[derive(Debug)]
@@ -49,12 +54,29 @@ impl Variant {
     }
 }
 
-pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier> {
+impl TStructIdentifier for StructIdentifier {
+    fn is_storage(&self) -> bool {
+        for data in &self.types {
+            match data {
+                StructType::Mapping(_) => return true,
+                _ => {}
+            }
+        }
+
+        false
+    }
+
+    fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier> {
+        parse_structs(lexems)
+    }
+}
+
+fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier> {
     let mut structs: Vec<StructIdentifier> = Vec::new();
     for lexem in lexems {
         let mut struct_types: Vec<StructType> = Vec::new();
         let mut struct_identifier = String::new();
-        let mut is_storage = false;
+        // let mut is_storage = false;
         /* SANITY CHECKS */
         {
             if lexem.is_empty() {
@@ -136,6 +158,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
         }
 
         let struct_line = lexem[0].line;
+        /* PROCESS VARIANTS */
         {
             let mut skipped_count = 0;
             let mut combined: Vec<Token> = Vec::new();
@@ -187,11 +210,11 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                                 },
                             );
 
-                            if !is_storage {
-                                if let StructType::Mapping(_) = variant {
-                                    is_storage = true;
-                                }
-                            }
+                            // if !is_storage {
+                            //     if let StructType::Mapping(_) = variant {
+                            //         is_storage = true;
+                            //     }
+                            // }
                             struct_types.push(variant);
                             combined.clear();
                         }
@@ -216,7 +239,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
         let struct_construct = StructIdentifier {
             header: StructHeader {
                 identifier: struct_identifier,
-                is_storage,
+                // is_storage,
             },
             types: struct_types,
             line: struct_line.to_string(),

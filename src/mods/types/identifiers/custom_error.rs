@@ -4,7 +4,7 @@ use crate::mods::{
     types::{
         compiler_errors::{CompilerError, SyntaxError},
         line_descriptors::LineDescriptions,
-        token::{Token, TokenTrait, VecExtension},
+        token::{TTokenTrait, TVecExtension, Token},
     },
 };
 
