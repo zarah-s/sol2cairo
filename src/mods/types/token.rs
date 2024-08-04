@@ -649,11 +649,13 @@ fn lex(input: &str) -> Vec<Token> {
             }
         } else if character == '"' || character == '\'' {
             combined_char.push(character);
-            if opened_quote && quote == character.to_string() {
-                opened_quote = false;
-                quote.clear();
-                combined_strings.push(combined_char.trim().to_string());
-                combined_char.clear();
+            if opened_quote {
+                if quote == character.to_string() {
+                    opened_quote = false;
+                    quote.clear();
+                    combined_strings.push(combined_char.trim().to_string());
+                    combined_char.clear();
+                }
             } else {
                 opened_quote = true;
                 quote = character.to_string();
@@ -715,8 +717,7 @@ fn lex(input: &str) -> Vec<Token> {
             }
         }
     }
-
-    assert!(combined_char.is_empty(), "Internal Error");
+    assert!(combined_char.is_empty(), "Syntax Error: {}", combined_char);
 
     for combined_string in combined_strings {
         lexems.push(combined_string.tokenize())
