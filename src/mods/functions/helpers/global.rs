@@ -1,3 +1,5 @@
+use std::env::VarError;
+
 use regex::Regex;
 
 use crate::mods::types::{
@@ -148,4 +150,8 @@ pub fn validate_identifier(haystack: &str) -> Result<(), String> {
     } else {
         Err(format!("Invalid identifier pattern {}", haystack))
     }
+}
+
+pub fn get_env_vars(key: &str) -> Result<String, VarError> {
+    std::env::var(key)
 }
