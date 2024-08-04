@@ -4,7 +4,8 @@ pragma solidity ^0.8.24;
 library Name {
     //
     jane owen
-     = "sdf";
+     = 'can"t do';
+     ad dfd =( string(string(string(("hello world")))));
 
      sdfd[] public constant jane=[1,2,3,4,5];
 

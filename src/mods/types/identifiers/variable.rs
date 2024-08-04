@@ -1,57 +1,69 @@
 use crate::mods::{
     constants::constants::FILE_PATH,
-    functions::helpers::global::validate_identifier,
+    functions::helpers::global::{get_env_vars, validate_identifier},
     types::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         line_descriptors::LineDescriptions,
         token::{Mutability, TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
+#[derive(Debug)]
 
 enum TypeCast {
-    Value(String),
+    Value(Box<VariableValue>),
     Cast(Box<TypeCast>),
 }
+#[derive(Debug)]
 
 enum StringValue {
     Literal(String),
-    TypeCast(TypeCast),
+    TypeCast(Box<VariableValue>),
 }
+#[derive(Debug)]
 
 enum IntegerValue {
     Literal(String),
     TypeCast(TypeCast),
 }
+#[derive(Debug)]
 
 enum BytesValue {
     Literal(String),
     TypeCast(TypeCast),
 }
 
+#[derive(Debug)]
+
 enum AddressValue {
     Literal(String),
     TypeCast(TypeCast),
 }
 
+#[derive(Debug)]
+
 enum BooleanValue {
     Literal(String),
     TypeCast(TypeCast),
 }
+#[derive(Debug)]
 
 enum ExpressionValue {
     Ternary(String),
     Math(String),
 }
+#[derive(Debug)]
 
 enum FunctionValueType {
     Global,
     Defined,
 }
+#[derive(Debug)]
 
 struct ContractInstanceValue {
     pub identifier: String,
     pub arguments: Vec<VariableValue>,
 }
+#[derive(Debug)]
 
 struct ContractFunctionValue {
     pub identifier: String,
@@ -59,37 +71,62 @@ struct ContractFunctionValue {
     pub function_identifier: String,
     pub function_args: Vec<VariableValue>,
 }
+#[derive(Debug)]
 
 enum Contractvalue {
     ContractFunctionValue(ContractFunctionValue),
     ContractInstanceValue(ContractInstanceValue),
 }
 
+#[derive(Debug)]
+
 struct FunctionValue {
     pub identifier: String,
     pub arguments: Vec<VariableValue>,
     pub r#type: FunctionValueType,
 }
+#[derive(Debug)]
+
 struct VariantValue {
     pub identifier: String,
     pub variants: Vec<String>,
 }
+#[derive(Debug)]
 
 struct StructInstanceValue {
     pub identifier: String,
     pub variants: Vec<[String; 2]>,
 }
 
+#[derive(Debug)]
+
 enum StructValue {
     Instance(StructInstanceValue),
     Variant(VariantValue),
 }
+
+#[derive(Debug)]
 
 struct InstanceValue {
     pub r#type: String,
     pub length: String,
 }
 
+#[derive(Debug)]
+
+enum NestType {
+    Variant,
+    Method,
+}
+
+#[derive(Debug)]
+
+struct NestedValue {
+    pub r#type: NestType,
+    pub value: Box<VariableValue>,
+}
+
+#[derive(Debug)]
 enum VariableValue {
     StringValue(StringValue),
     ArrayValue(Vec<VariableValue>),
@@ -108,6 +145,8 @@ enum VariableValue {
     Context(Box<VariableValue>),
     Contractvalue(Contractvalue),
     InstanceValue(InstanceValue),
+    NestedValue(NestedValue),
+    None,
 }
 
 pub struct VariableIdentifier {
@@ -142,7 +181,7 @@ pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Va
                 match token {
                     Token::SemiColon => {
                         combined.push(token);
-                        process_var_construct(&combined).unwrap_or_else(
+                        process_var_construct(&combined, lex.line).unwrap_or_else(
                             |(err, err_type): (String, ErrType)| {
                                 match err_type {
                                     ErrType::Missing => CompilerError::SyntaxError(
@@ -193,7 +232,7 @@ pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Va
     variables
 }
 
-fn process_var_construct(combined: &Vec<Token>) -> Result<(), (String, ErrType)> {
+fn process_var_construct(combined: &Vec<Token>, line: i32) -> Result<(), (String, ErrType)> {
     let mut state = VariableState::None;
     let mut data_type = String::new();
     let mut is_array = false;
@@ -410,12 +449,90 @@ fn process_var_construct(combined: &Vec<Token>) -> Result<(), (String, ErrType)>
     }
 
     if !raw_value.is_empty() {
-        process_variable_value(raw_value)
+        let processed = process_variable_value(raw_value, line);
+
+        println!("{:?}", processed);
     }
 
     Ok(())
 }
 
-fn process_variable_value(raw_value: Vec<Token>) {
-    println!("{:?}", raw_value.to_string());
+fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
+    match &raw_value.strip_spaces()[0] {
+        Token::Identifier(_identifier) => {
+            if _identifier.starts_with("\"") || _identifier.starts_with("'") {
+                /* QUOTATION VALIDATIONS */
+                if raw_value.strip_spaces().len() != 1 {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Mismatch closing string. Expecting ; but found {}",
+                        raw_value.strip_spaces().get(1).unwrap().to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                }
+                if _identifier.starts_with("\"") && !_identifier.ends_with("\"") {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Mismatch closing string. Expecting \" but found {}",
+                        _identifier.chars().last().unwrap()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                }
+                if _identifier.starts_with("'") && !_identifier.ends_with("'") {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Mismatch closing string. Expecting \" but found {}",
+                        _identifier.chars().last().unwrap()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                }
+
+                let val = &_identifier[1.._identifier.len() - 1];
+                /* VALUE HERE */
+                let variable_value =
+                    VariableValue::StringValue(StringValue::Literal(val.to_string()));
+                return variable_value;
+            }
+        }
+
+        Token::String => {
+            /* VALIDATION CHECKS */
+            if raw_value.strip_spaces()[1] != Token::OpenParenthesis {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    "Expecting ( but got {}",
+                    raw_value.strip_spaces()[1].to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+            }
+
+            if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    "Expecting ) but got {}",
+                    raw_value.strip_spaces().last().unwrap().to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+            }
+            let cast_value = &raw_value.strip_spaces()[2..raw_value.strip_spaces().len() - 1];
+            // println!("{:?}", cast_value);
+            let variable_value = VariableValue::StringValue(StringValue::TypeCast(Box::new(
+                process_variable_value(cast_value.to_vec(), line),
+            )));
+            // println!("{:?}", variable_value);
+            return variable_value;
+        }
+
+        Token::OpenParenthesis => {
+            if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    "Expecting ) but got {}",
+                    raw_value.strip_spaces().last().unwrap().to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+            }
+            let cast_value = &raw_value.strip_spaces()[1..raw_value.strip_spaces().len() - 1];
+            let variable_value = process_variable_value(cast_value.to_vec(), line);
+            return VariableValue::Context(Box::new(variable_value));
+        }
+        _ => {}
+    }
+    // println!("{:?} raw", raw_value);
+    VariableValue::None
+    // println!("{:?}", variable_value);
 }
