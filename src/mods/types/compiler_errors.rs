@@ -21,6 +21,8 @@ pub enum SyntaxError<'a> {
     SyntaxError(&'a str),
 }
 
+#[derive(Debug)]
+
 pub enum ErrType {
     Missing,
     Syntax,
