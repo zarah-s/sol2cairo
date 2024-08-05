@@ -1,18 +1,28 @@
 use crate::mods::{
     constants::constants::FILE_PATH,
-    functions::helpers::global::validate_identifier,
+    functions::helpers::global::{
+        get_env_vars, process_name, process_size, process_type, validate_identifier,
+    },
     types::{
-        compiler_errors::{CompilerError, SyntaxError},
+        compiler_errors::{CompilerError, ErrType, SyntaxError},
         line_descriptors::LineDescriptions,
         token::{TTokenTrait, TVecExtension, Token},
     },
 };
 
 #[derive(Debug)]
+pub struct Arg {
+    pub r#type: String,
+    pub name: Option<String>,
+    pub array_size: Option<String>,
+    pub is_array: bool,
+}
+
+#[derive(Debug)]
 pub struct CustomErrorIdentifier {
     pub identifier: String,
     pub line: String,
-    pub args: Option<Vec<String>>,
+    pub args: Option<Vec<Arg>>,
 }
 
 #[derive(Debug)]
@@ -65,12 +75,12 @@ pub fn parse_custom_errors(
                     break;
                 }
                 for token in &lex.data {
-                    header_index_stop += 1;
                     if *token == Token::OpenParenthesis {
                         should_break = true;
                         break;
                     }
                     header_tokens.push(token);
+                    header_index_stop += 1;
                 }
             }
 
@@ -109,88 +119,220 @@ pub fn parse_custom_errors(
         }
 
         {
-            let mut arguments: Vec<String> = Vec::new();
+            let mut arguments: Vec<Arg> = Vec::new();
             let mut skipped_count = 0;
-            let mut opened_paren = 1; /* validate header skips one count */
-            let mut error_state = ErrorState::None;
-            for (parent_index, lex) in lexem.iter().enumerate() {
-                for (index, token) in lex.data.iter().enumerate() {
+            let mut raw_args = Vec::new();
+            let line = lexem.first().unwrap().line;
+            for lex in &lexem {
+                for token in &lex.data {
                     if skipped_count < header_index_stop {
                         skipped_count += 1;
                         continue;
                     }
 
-                    match token {
-                        Token::Space => {}
-                        Token::Identifier(ref _variant) => {
-                            if let ErrorState::Coma | ErrorState::None = error_state {
-                                let _ = validate_identifier(&_variant).unwrap_or_else(|err| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
+                    raw_args.push(token.to_owned());
+                }
+            }
+
+            if raw_args[0] != Token::OpenParenthesis {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    "Misssing ( for {}",
+                    raw_args.to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+            }
+
+            if raw_args[raw_args.len() - 1] != Token::SemiColon {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    "Misssing ; for {}",
+                    raw_args.to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+            }
+
+            if raw_args[raw_args.len() - 2] != Token::CloseParenthesis {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    "Misssing ) for {}",
+                    raw_args.to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+            }
+
+            let stripped = &raw_args[1..&raw_args.len() - 2]
+                .split(|pred| *pred == Token::Coma)
+                .collect::<Vec<_>>();
+
+            for combined in stripped {
+                let mut is_array = false;
+                let mut r#type = String::new();
+                let mut size: Option<String> = None;
+                let mut name: Option<String> = None;
+                let open_bracket_index = combined
+                    .iter()
+                    .position(|pred| *pred == Token::OpenSquareBracket);
+
+                if let Some(_bracket_index) = open_bracket_index {
+                    /* PROCESS TYPE */
+                    let backward_slice = &combined[.._bracket_index];
+
+                    process_type(backward_slice, &mut r#type, &combined.to_vec()).unwrap_or_else(
+                        |(msg, _)| {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+
+                            unreachable!()
+                        },
+                    );
+                    is_array = true;
+                    /* PROCESS ARRAY SIZE */
+                    let close_bracket_index = &combined[_bracket_index + 1..]
+                        .iter()
+                        .position(|pred| *pred == Token::CloseSquareBracket);
+                    if let Some(_close_bracket_index) = close_bracket_index {
+                        size =
+                            process_size(&combined.to_vec(), _bracket_index, *_close_bracket_index)
+                                .unwrap_or_else(|(msg, _)| {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
                                         .throw_with_file_info(
-                                            &std::env::var(FILE_PATH).unwrap(),
-                                            lex.line,
-                                        )
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+
+                                    unreachable!()
                                 });
-                                arguments.push(_variant.to_owned());
-                                error_state = ErrorState::Arg;
-                            } else {
-                                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
-                                    &token.to_string(),
-                                ))
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
-                            }
-                        }
+                    } else {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "] \"{}\"",
+                            combined.to_vec().to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    }
 
-                        Token::Uint(_)
-                        | Token::Int(_)
-                        | Token::Bool
-                        | Token::Bytes(_)
-                        | Token::Address
-                        | Token::String => {
-                            if let ErrorState::Coma | ErrorState::None = error_state {
-                                arguments.push(token.to_string());
-                                error_state = ErrorState::Arg;
-                            } else {
-                                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
-                                    &token.to_string(),
-                                ))
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
-                            }
-                        }
-                        Token::Coma => {
-                            if let ErrorState::Arg = error_state {
-                                error_state = ErrorState::Coma;
-                            } else {
-                                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
-                                    &token.to_string(),
-                                ))
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
-                            }
-                        }
-                        Token::CloseParenthesis => {
-                            opened_paren -= 1;
-                            if opened_paren != 0 {
-                                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
-                                    &token.to_string(),
-                                ))
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
-                            }
-                        }
+                    /* PROCESS NAME */
+                    let name_definition = &combined[_bracket_index + 1..]
+                        [close_bracket_index.unwrap() + 1..]
+                        .to_vec()
+                        .strip_spaces();
+                    if !name_definition.is_empty() {
+                        let mut _name = String::new();
+                        process_name(
+                            &[name_definition.to_owned(), vec![Token::SemiColon]].concat(),
+                            &mut _name,
+                            &combined.to_vec(),
+                        )
+                        .unwrap_or_else(|(msg, _)| {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
 
-                        Token::SemiColon => {
-                            if parent_index != lexem.len() - 1 || index != lex.data.len() - 1 {
-                                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
-                                    &token.to_string(),
-                                ))
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                            unreachable!()
+                        });
+
+                        name = Some(_name);
+                    }
+                } else {
+                    if let Some(_) = combined.to_vec().strip_spaces().get(1) {
+                        if let Token::Dot = combined.to_vec().strip_spaces()[1] {
+                            let slice = &combined[..3];
+                            process_type(slice, &mut r#type, &combined.to_vec()).unwrap_or_else(
+                                |(msg, _)| {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+
+                                    unreachable!()
+                                },
+                            );
+                            let name_definition = &combined[3..].to_vec().strip_spaces();
+                            if !name_definition.is_empty() {
+                                let mut _name = String::new();
+
+                                process_name(
+                                    &[name_definition.to_vec(), vec![Token::SemiColon]].concat(),
+                                    &mut _name,
+                                    &combined.to_vec(),
+                                )
+                                .unwrap_or_else(|(msg, _)| {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+
+                                    unreachable!()
+                                });
+                                name = Some(_name);
+                            }
+                        } else {
+                            process_type(&combined[..1], &mut r#type, &combined.to_vec())
+                                .unwrap_or_else(|(msg, _)| {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+
+                                    unreachable!()
+                                });
+                            let name_definition = &combined[1..].to_vec().strip_spaces();
+                            if !name_definition.is_empty() {
+                                let mut _name = String::new();
+
+                                process_name(
+                                    &[name_definition.to_vec(), vec![Token::SemiColon]].concat(),
+                                    &mut _name,
+                                    &combined.to_vec(),
+                                )
+                                .unwrap_or_else(|(msg, _)| {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+
+                                    unreachable!()
+                                });
+
+                                name = Some(_name);
                             }
                         }
-                        _other => CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
-                            &_other.to_string(),
-                        ))
-                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line),
+                    } else {
+                        process_type(&combined[..1], &mut r#type, &combined.to_vec())
+                            .unwrap_or_else(|(msg, _)| {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+
+                                unreachable!()
+                            });
+                        let name_definition = &combined[1..].to_vec().strip_spaces();
+                        if !name_definition.is_empty() {
+                            let mut _name = String::new();
+
+                            process_name(
+                                &[name_definition.to_vec(), vec![Token::SemiColon]].concat(),
+                                &mut _name,
+                                &combined.to_vec(),
+                            )
+                            .unwrap_or_else(|(msg, _)| {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+
+                                unreachable!()
+                            });
+
+                            name = Some(_name);
+                        }
                     }
                 }
+
+                let arg = Arg {
+                    is_array,
+                    name,
+                    array_size: size,
+                    r#type,
+                };
+                arguments.push(arg);
             }
 
             let error_construct = CustomErrorIdentifier {

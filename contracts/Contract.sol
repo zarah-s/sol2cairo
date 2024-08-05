@@ -8,6 +8,7 @@ library Name {
      ad dfd =( string(string(string(("hello world")))));
 
      sdfd[] public constant jane=[1,2,3,4,5];
+event Transfer(uint indexed oi);
 
     uint sdf;
 
@@ -29,7 +30,7 @@ library Name {
     }
 
      struct Layout {
-        address owner;
+        address[(100**10)] owner;
         uint256 collection_count;
         mapping(uint256 => Types.Collection) collection_by_id;
         mapping(string => Types.Collection) collection_by_name;
@@ -131,7 +132,7 @@ contract Yds is OI{
 
 library Lb{ sld oi;
     using Oi for uint[];
-    error Lib_ERROR(Oi,Shit,uint256,_);
+    error Lib_ERROR(Oi[(1000*23)] chii,Shit,uint256,_);
 
     function dd() 
     {}
