@@ -26,6 +26,7 @@ pub enum TerminationTypeContext {
     Implementation,
     Function,
     Error,
+    Event,
 }
 
 pub trait TContextFn {

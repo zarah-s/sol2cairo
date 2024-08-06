@@ -11,6 +11,7 @@ use crate::mods::{
         context::{TContextFn, TerminationTypeContext, VariantContext},
         identifiers::{
             custom_error::parse_custom_errors,
+            event::parse_events,
             lib_implementation::parse_lib_implementations,
             r#enum::parse_enums,
             r#struct::{StructIdentifier, TStructIdentifier},
@@ -40,7 +41,7 @@ pub async fn compile_source_code(args: Vec<String>) {
     );
 
     for library in libraries {
-        let (structs, vars, enums, functions, errors, lib_implementations, lib_header) =
+        let (structs, vars, enums, functions, errors, events, lib_implementations, lib_header) =
             seperate_variant_variants(library, false);
         if lib_header.len() != 1 {
             let mut stringified_components = String::new();
@@ -123,14 +124,16 @@ pub async fn compile_source_code(args: Vec<String>) {
             }
         }
 
-        let _val = StructIdentifier::parse_structs(structs);
+        // println!("{:?}", events);
+
+        let _ = StructIdentifier::parse_structs(structs);
         let _ = parse_enums(enums);
 
-        let _ = parse_custom_errors(errors);
-
+        let _errs = parse_custom_errors(errors);
+        let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
-        parse_variables(vars);
-        // println!("{:#?}", );
+        // parse_variables(vars);
+        println!("{:#?}", _events);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
@@ -637,6 +640,7 @@ fn seperate_variant_variants(
     Vec<Vec<LineDescriptions<Vec<Token>>>>,
     Vec<Vec<LineDescriptions<Vec<Token>>>>,
     Vec<Vec<LineDescriptions<Vec<Token>>>>,
+    Vec<Vec<LineDescriptions<Vec<Token>>>>,
 ) {
     let mut opened_braces_count = 0;
     let mut terminator_type = TerminationTypeContext::None;
@@ -645,6 +649,7 @@ fn seperate_variant_variants(
     let mut enums: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut functions: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut errors: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
+    let mut events: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut lib_implementations: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut lib_header: Vec<Vec<LineDescriptions<Vec<Token>>>> = Vec::new();
     let mut tokens: Vec<Token> = Vec::new();
@@ -746,6 +751,18 @@ fn seperate_variant_variants(
                     }
                 }
 
+                Token::Event => {
+                    if parent_index > 0 {
+                        validate_clash(
+                            terminator_type,
+                            &tokens,
+                            &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
+                            Some(opened_braces_count),
+                        )
+                    }
+                    terminator_type = TerminationTypeContext::Event
+                }
+
                 Token::SemiColon => {
                     if opened_braces_count == 1 {
                         if !tokens.is_empty() {
@@ -768,6 +785,10 @@ fn seperate_variant_variants(
 
                             TerminationTypeContext::Error => {
                                 errors.push(combined.clone());
+                                combined.clear();
+                            }
+                            TerminationTypeContext::Event => {
+                                events.push(combined.clone());
                                 combined.clear();
                             }
                             TerminationTypeContext::Implementation => {
@@ -952,6 +973,7 @@ fn seperate_variant_variants(
         enums,
         functions,
         errors,
+        events,
         lib_implementations,
         lib_header,
     )
