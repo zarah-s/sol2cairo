@@ -63,6 +63,7 @@ pub fn process_type(
     r#type: &mut String,
     combined: &Vec<Token>,
 ) -> Result<(), (String, ErrType)> {
+    // println!("{:?}", slice);
     if slice.len() == 3 {
         if slice.contains(&Token::Dot) {
             for slc in slice {
@@ -79,7 +80,7 @@ pub fn process_type(
                         r#type.push_str(&identifier);
                     }
                     Token::Dot => r#type.push_str(&Token::Dot.to_string()),
-                    _ => {
+                    _other => {
                         return Err((
                             format!("Invalid variant declaration \"{}\"", combined.to_string()),
                             ErrType::Syntax,

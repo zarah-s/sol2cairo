@@ -8,7 +8,7 @@ library Name {
      ad dfd =( string(string(string(("hello world")))));
 
      sdfd[] public constant jane=[1,2,3,4,5];
-event Transfer(uint indexed oi);
+event Transfer(uind.asd[(((100)))] indexed,address indexed);
 
     uint sdf;
 
@@ -132,7 +132,7 @@ contract Yds is OI{
 
 library Lb{ sld oi;
     using Oi for uint[];
-    error Lib_ERROR(Oi[(1000*23)] chii,Shit,uint256,_);
+    error Lib_ERROR(Oi.sdf[(1000*23)] chii,Shit,uint256,_);
 
     function dd() 
     {}

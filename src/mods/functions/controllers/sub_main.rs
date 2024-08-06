@@ -11,6 +11,7 @@ use crate::mods::{
         context::{TContextFn, TerminationTypeContext, VariantContext},
         identifiers::{
             custom_error::parse_custom_errors,
+            event::parse_events,
             lib_implementation::parse_lib_implementations,
             r#enum::parse_enums,
             r#struct::{StructIdentifier, TStructIdentifier},
@@ -128,11 +129,11 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _ = StructIdentifier::parse_structs(structs);
         let _ = parse_enums(enums);
 
-        let _ = parse_custom_errors(errors);
-
+        let _errs = parse_custom_errors(errors);
+        let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
-        parse_variables(vars);
-        // println!("{:#?}", _errs);
+        // parse_variables(vars);
+        println!("{:#?}", _events);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
