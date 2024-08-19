@@ -23,13 +23,19 @@ enum StringValue {
 
 enum IntegerValue {
     Literal(String),
-    TypeCast(Box<VariableValue>),
+    TypeCast {
+        size: Option<u16>,
+        value: Box<VariableValue>,
+    },
 }
 #[derive(Debug)]
 
 enum BytesVariable {
     Literal(String),
-    TypeCast(Box<VariableValue>),
+    TypeCast {
+        size: Option<u16>,
+        value: Box<VariableValue>,
+    },
 }
 
 #[derive(Debug)]
@@ -137,10 +143,7 @@ enum VariableValue {
     StringValue(StringValue),
     ArrayValue(Vec<VariableValue>),
     IntegerValue(IntegerValue),
-    BytesValue {
-        size: Option<u16>,
-        value: BytesValue,
-    },
+    BytesValue(BytesValue),
     AddressValue(AddressValue),
     BooleanValue(BooleanValue),
     FunctionValue(FunctionValue),
@@ -558,15 +561,13 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         Token::Bytes(_size) => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
-            let variable_value = VariableValue::BytesValue {
-                size: _size.to_owned(),
-                value: BytesValue {
-                    value: BytesVariable::TypeCast(Box::new(process_variable_value(
-                        cast_value, line,
-                    ))),
-                    then: nested,
+            let variable_value = VariableValue::BytesValue(BytesValue {
+                value: BytesVariable::TypeCast {
+                    size: _size.to_owned(),
+                    value: Box::new(process_variable_value(cast_value, line)),
                 },
-            };
+                then: nested,
+            });
 
             return variable_value;
         }
@@ -578,11 +579,12 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             )));
             return variable_value;
         }
-        Token::Uint(_) | Token::Int(_) => {
+        Token::Uint(_size) | Token::Int(_size) => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
-            let variable_value = VariableValue::IntegerValue(IntegerValue::TypeCast(Box::new(
-                process_variable_value(cast_value.to_vec(), line),
-            )));
+            let variable_value = VariableValue::IntegerValue(IntegerValue::TypeCast {
+                size: _size.to_owned(),
+                value: Box::new(process_variable_value(cast_value.to_vec(), line)),
+            });
             return variable_value;
         }
 
