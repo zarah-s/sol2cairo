@@ -3,6 +3,9 @@ pragma solidity ^0.8.24;
 
 library Name {
     //
+    address user = address   (address(0xa));
+     bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user);
+     bytes bts = bytes(0x1);
     jane owen
      = 'can"t do';
      ad dfd =( string(string(string(("hello world")))));
@@ -10,7 +13,7 @@ library Name {
      sdfd[] public constant jane=[1,2,3,4,5];
 event Transfer(uind.asd[(((100)))] indexed,address indexed);
 
-    uint sdf;
+    uint sdf = uint(wed);
 
     function oi() {
         {}
