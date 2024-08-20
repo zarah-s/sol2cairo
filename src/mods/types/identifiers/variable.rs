@@ -13,30 +13,63 @@ enum TypeCast {
     Value(Box<VariableValue>),
     Cast(Box<TypeCast>),
 }
+
 #[derive(Debug)]
 
-enum StringValue {
+enum StringVariable {
     Literal(String),
     TypeCast(Box<VariableValue>),
 }
+
 #[derive(Debug)]
 
-enum IntegerValue {
-    Literal(String),
-    TypeCast(TypeCast),
+struct StringValue {
+    pub value: StringVariable,
+    pub then: Option<Box<VariableValue>>,
 }
 #[derive(Debug)]
 
-enum BytesValue {
+enum IntegerVariable {
     Literal(String),
-    TypeCast(TypeCast),
+    TypeCast {
+        size: Option<u16>,
+        value: Box<VariableValue>,
+    },
+}
+#[derive(Debug)]
+
+struct IntegerValue {
+    pub value: IntegerVariable,
+    pub then: Option<Box<VariableValue>>,
+}
+#[derive(Debug)]
+
+enum BytesVariable {
+    Literal(String),
+    TypeCast {
+        size: Option<u16>,
+        value: Box<VariableValue>,
+    },
+}
+
+#[derive(Debug)]
+struct BytesValue {
+    pub value: BytesVariable,
+    pub then: Option<Box<VariableValue>>,
 }
 
 #[derive(Debug)]
 
-enum AddressValue {
+enum AddressVariable {
     Literal(String),
-    TypeCast(TypeCast),
+    TypeCast(Box<VariableValue>),
+}
+
+#[derive(Debug)]
+
+struct AddressValue {
+    pub value: AddressVariable,
+    pub then: Option<Box<VariableValue>>,
 }
 
 #[derive(Debug)]
@@ -80,10 +113,16 @@ enum Contractvalue {
 
 #[derive(Debug)]
 
-struct FunctionValue {
+struct FunctionVariable {
     pub identifier: String,
-    pub arguments: Vec<VariableValue>,
+    pub arguments: Option<Vec<VariableValue>>,
     pub r#type: FunctionValueType,
+}
+#[derive(Debug)]
+
+struct FunctionValue {
+    pub value: FunctionVariable,
+    pub then: Option<Box<VariableValue>>,
 }
 #[derive(Debug)]
 
@@ -147,6 +186,46 @@ enum VariableValue {
     InstanceValue(InstanceValue),
     NestedValue(NestedValue),
     None,
+}
+
+impl VariableValue {
+    fn add_method(&mut self, new: VariableValue) {
+        match self {
+            Self::None => {
+                *self = new;
+            }
+            _ => {
+                if self.access_then().is_none() {
+                    *self.access_then() = Some(Box::new(new));
+                } else {
+                    VariableValue::od(&mut self.access_then().as_mut().unwrap(), new);
+                }
+            }
+        }
+    }
+
+    fn od(oth: &mut Box<VariableValue>, new: VariableValue) {
+        match **oth {
+            VariableValue::None => *oth = Box::new(new),
+            _ => {
+                if oth.access_then().is_none() {
+                    *oth.access_then().as_mut().unwrap() = Box::new(new);
+                } else {
+                    VariableValue::od(&mut oth.access_then().as_mut().unwrap(), new)
+                }
+            }
+            _ => {}
+        }
+    }
+    fn access_then(&mut self) -> &mut Option<Box<VariableValue>> {
+        match self {
+            VariableValue::AddressValue(value) => &mut value.then,
+            VariableValue::FunctionValue(value) => &mut value.then,
+            _ => {
+                panic!("Detected non method type")
+            }
+        }
+    }
 }
 
 pub struct VariableIdentifier {
@@ -450,19 +529,24 @@ fn process_var_construct(combined: &Vec<Token>, line: i32) -> Result<(), (String
 
     if !raw_value.is_empty() {
         let processed = process_variable_value(raw_value, line);
-
-        println!("{:?}", processed);
+        println!("{:#?}", processed);
     }
 
     Ok(())
 }
 
 fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
+    if raw_value.strip_spaces().is_empty() {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError(""))
+            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+    }
     match &raw_value.strip_spaces()[0] {
         Token::Identifier(_identifier) => {
             if _identifier.starts_with("\"") || _identifier.starts_with("'") {
                 /* QUOTATION VALIDATIONS */
+
                 if raw_value.strip_spaces().len() != 1 {
+                    // println!("{:?}", raw_value);
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                         "Mismatch closing string. Expecting ; but found {}",
                         raw_value.strip_spaces().get(1).unwrap().to_string()
@@ -486,35 +570,113 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
 
                 let val = &_identifier[1.._identifier.len() - 1];
                 /* VALUE HERE */
-                let variable_value =
-                    VariableValue::StringValue(StringValue::Literal(val.to_string()));
+
+                let variable_value = VariableValue::StringValue(StringValue {
+                    value: StringVariable::Literal(val.to_string()),
+                    then: None,
+                });
                 return variable_value;
+            } else if raw_value.strip_spaces().len() == 1 {
+                if let Ok(_val) = _identifier.parse::<usize>() {
+                    let variable_value = VariableValue::IntegerValue(IntegerValue {
+                        value: IntegerVariable::Literal(_identifier.to_owned()),
+                        then: None,
+                    });
+                    return variable_value;
+                } else {
+                    let variable_value = VariableValue::IdentifierValue(_identifier.to_owned());
+                    return variable_value;
+                }
+            } else if raw_value.strip_spaces()[1] == Token::OpenParenthesis {
+                if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                } else {
+                    let raw_args = &raw_value[2..raw_value.len() - 1];
+
+                    if raw_args.is_empty() {
+                        let variable_value = VariableValue::FunctionValue(FunctionValue {
+                            value: FunctionVariable {
+                                arguments: None,
+                                identifier: _identifier.to_string(),
+                                r#type: FunctionValueType::Defined,
+                            },
+                            then: None,
+                        });
+                        return variable_value;
+                    } else {
+                        let mut arguments: Vec<VariableValue> = Vec::new();
+                        let splitted_args = raw_args
+                            .split(|pred| *pred == Token::Coma)
+                            .collect::<Vec<_>>();
+
+                        for split in splitted_args {
+                            let construct = process_variable_value(split.to_vec(), line);
+                            arguments.push(construct);
+                        }
+
+                        let variable_value = VariableValue::FunctionValue(FunctionValue {
+                            value: FunctionVariable {
+                                arguments: Some(arguments),
+                                identifier: _identifier.to_string(),
+                                r#type: FunctionValueType::Defined,
+                            },
+                            then: None,
+                        });
+
+                        return variable_value;
+                    }
+                }
             }
         }
 
         Token::String => {
-            /* VALIDATION CHECKS */
-            if raw_value.strip_spaces()[1] != Token::OpenParenthesis {
-                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                    "Expecting ( but got {}",
-                    raw_value.strip_spaces()[1].to_string()
-                )))
-                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
-            }
+            let (cast_value, nested) = process_type_cast(raw_value, line);
 
-            if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
-                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                    "Expecting ) but got {}",
-                    raw_value.strip_spaces().last().unwrap().to_string()
-                )))
-                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
-            }
-            let cast_value = &raw_value.strip_spaces()[2..raw_value.strip_spaces().len() - 1];
-            // println!("{:?}", cast_value);
-            let variable_value = VariableValue::StringValue(StringValue::TypeCast(Box::new(
-                process_variable_value(cast_value.to_vec(), line),
-            )));
-            // println!("{:?}", variable_value);
+            let variable_value = VariableValue::StringValue(StringValue {
+                value: StringVariable::TypeCast(Box::new(process_variable_value(
+                    cast_value.to_vec(),
+                    line,
+                ))),
+                then: nested,
+            });
+            return variable_value;
+        }
+        Token::Bytes(_size) => {
+            let (cast_value, nested) = process_type_cast(raw_value, line);
+
+            let variable_value = VariableValue::BytesValue(BytesValue {
+                value: BytesVariable::TypeCast {
+                    size: _size.to_owned(),
+                    value: Box::new(process_variable_value(cast_value, line)),
+                },
+                then: nested,
+            });
+
+            return variable_value;
+        }
+        Token::Address => {
+            let (cast_value, nested) = process_type_cast(raw_value, line);
+
+            let variable_value = VariableValue::AddressValue(AddressValue {
+                value: AddressVariable::TypeCast(Box::new(process_variable_value(
+                    cast_value.to_vec(),
+                    line,
+                ))),
+                then: nested,
+            });
+            return variable_value;
+        }
+        Token::Uint(_size) | Token::Int(_size) => {
+            let (cast_value, nested) = process_type_cast(raw_value, line);
+
+            let variable_value = VariableValue::IntegerValue(IntegerValue {
+                value: IntegerVariable::TypeCast {
+                    size: _size.to_owned(),
+                    value: Box::new(process_variable_value(cast_value.to_vec(), line)),
+                },
+                then: nested,
+            });
             return variable_value;
         }
 
@@ -535,4 +697,115 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
     // println!("{:?} raw", raw_value);
     VariableValue::None
     // println!("{:?}", variable_value);
+}
+
+fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Box<VariableValue>>) {
+    /* VALIDATION CHECKS */
+    if raw_value.strip_spaces()[1] != Token::OpenParenthesis {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+            "Expecting ( but got {}",
+            raw_value.strip_spaces()[1].to_string()
+        )))
+        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+    }
+
+    if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+            "Expecting ) but got {}",
+            raw_value.strip_spaces().last().unwrap().to_string()
+        )))
+        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+    }
+    let mut open_paren = 1;
+    let mut close_index = 1;
+
+    for tkn in &raw_value.strip_spaces()[2..] {
+        match tkn {
+            Token::OpenParenthesis => open_paren += 1,
+            Token::CloseParenthesis => open_paren -= 1,
+            _ => {}
+        }
+        close_index += 1;
+        if open_paren == 0 {
+            break;
+        }
+    }
+    let mut nest: VariableValue = VariableValue::None;
+    if raw_value.strip_spaces().get(close_index + 1).is_some() {
+        match raw_value.strip_spaces()[close_index + 1] {
+            Token::Dot => {
+                let mut methods = Vec::new();
+                let mut nest_open_paren = 0;
+                // let mut nest_close_paren_index = 0;
+                // let mut started = false;
+                let mut combined = Vec::new();
+                let methods_slice = raw_value.strip_spaces();
+                for tkn in &methods_slice[close_index + 1..] {
+                    combined.push(tkn.to_owned());
+                    match tkn {
+                        Token::OpenParenthesis => {
+                            nest_open_paren += 1;
+                            // if !started {
+                            //     started = true;
+                            // }
+                        }
+                        Token::CloseParenthesis => {
+                            nest_open_paren -= 1;
+                            if nest_open_paren == 0 {
+                                methods.push(combined.to_owned());
+                                combined.clear();
+                            }
+                        }
+                        _ => {}
+                    }
+                }
+
+                if methods.is_empty() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                } else {
+                    for method in methods {
+                        if method.is_empty() {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        } else {
+                            match method[0] {
+                                Token::Dot => nest
+                                    .add_method(process_variable_value(method[1..].to_vec(), line)),
+                                _ => {
+                                    panic!("NOT A METHOD FOR PROCESS TYPE_CAST IN VARIABLE.RS")
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // let nest_value = &raw_value.strip_spaces()
+                //     [close_index + 2..close_index + nest_close_paren_index + 1];
+
+                // // println!("{:?}", &raw_value.strip_spaces()[close_index + 2..]);
+                // if nest_value.is_empty() {
+                //     CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
+                //         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                // } else {
+                //     nest = Some(Box::new(process_variable_value(nest_value.to_vec(), line)));
+                // }
+                // println!("{:?}", methods);
+            }
+            Token::CloseParenthesis => {}
+            _ => {
+                panic!("Unexpected panic in variable.rs for process_type_cast")
+            }
+        }
+    }
+
+    let cast_value = &raw_value.strip_spaces()[2..close_index];
+    (
+        cast_value.to_vec(),
+        if let VariableValue::None = nest {
+            None
+        } else {
+            Some(Box::new(nest))
+        },
+    )
 }

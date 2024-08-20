@@ -132,8 +132,8 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _errs = parse_custom_errors(errors);
         let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
-        // parse_variables(vars);
-        println!("{:#?}", _events);
+        parse_variables(vars);
+        // println!("{:#?}", _events);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
@@ -897,8 +897,6 @@ fn seperate_variant_variants(
                         }
                         terminator_type = TerminationTypeContext::None;
                     } else if opened_braces_count == 0 {
-                        // println!("{:?}", _line_desc.data.get(index + 1));
-                        // panic!("dfsd")
                         if tokens.len() == 1 {
                             tokens.clear();
                         } else {
@@ -907,7 +905,9 @@ fn seperate_variant_variants(
                     }
                 }
 
-                _ => {}
+                _ => {
+                    //TODO: NOTHING
+                }
             }
 
             if let TerminationTypeContext::None = terminator_type {
