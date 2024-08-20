@@ -30,20 +30,6 @@ pub struct EventIdentifier {
     pub variants: Vec<EventIdentifierVariants>,
 }
 
-// #[derive(Debug)]
-// pub struct CustomErrorIdentifier {
-//     pub identifier: String,
-//     pub line: String,
-//     pub args: Option<Vec<Arg>>,
-// }
-
-// #[derive(Debug)]
-// enum ErrorState {
-//     None,
-//     Coma,
-//     Arg,
-// }
-
 pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EventIdentifier> {
     let mut events = Vec::new();
 
@@ -224,7 +210,6 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                         [close_bracket_index.unwrap() + 1..]
                         .to_vec()
                         .strip_spaces();
-                    // panic!("{:?}", name_definition);
 
                     if !name_definition.is_empty() {
                         if *name_definition.first().unwrap() == Token::Indexed {

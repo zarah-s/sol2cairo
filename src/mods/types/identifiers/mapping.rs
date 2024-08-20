@@ -83,11 +83,7 @@ impl Mapping {
     ) -> Result<(), (String, ErrType)> {
         if self.key.is_none() {
             if let Some(_key) = &key {
-                // if let Some(_) = extract_data_type_from_token(&_key.tokenize()) {
                 self.key = key;
-                // } else {
-                //     return Err((format!("Invalid data type \"{}\"", _key), ErrType::Syntax));
-                // }
             } else {
                 return Err(("Expecting key".to_string(), ErrType::Missing));
             }
@@ -96,14 +92,10 @@ impl Mapping {
                 self.value = Some(_val);
             } else {
                 let _key = key.clone().unwrap();
-                // if let Some(_) = extract_data_type_from_token(&_key.tokenize()) {
                 self.value = Some(MappingValue::Mapping(Box::new(Mapping {
                     key,
                     value: None,
                 })));
-                // } else {
-                //     return Err((format!("Invalid data type \"{}\"", _key), ErrType::Syntax));
-                // }
             }
         } else {
             if let Some(ref mut node) = self.value {
@@ -133,7 +125,6 @@ pub fn process_mapping(
     let mut is_array = false;
     let mut r#type = String::new();
     let mut size: Option<String> = None;
-    //
     for (index, n) in combined.iter().enumerate() {
         if pad > index {
             continue;
@@ -343,7 +334,6 @@ pub fn process_mapping(
                     if nested_count == 0 {
                         if let Token::Identifier(identifier) = n {
                             mapping_header.identifier = identifier.to_string();
-                            // name.push_str(identifier)
                         } else {
                             return Err((
                                 format!("Expecting identifier but found \"{}\"", n.to_string()),

@@ -63,7 +63,6 @@ pub fn process_type(
     r#type: &mut String,
     combined: &Vec<Token>,
 ) -> Result<(), (String, ErrType)> {
-    // println!("{:?}", slice);
     if slice.len() == 3 {
         if slice.contains(&Token::Dot) {
             for slc in slice {
