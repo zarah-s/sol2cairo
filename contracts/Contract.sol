@@ -13,7 +13,7 @@ library Name {
      sdfd[] public constant jane=[1,2,3,4,5];
 event Transfer(uind.asd[(((100)))] indexed,address indexed);
 
-    uint sdf = uint8(wed);
+    uint sdf = uint8(wed).to_bts().add();
 
     function oi() {
         {}

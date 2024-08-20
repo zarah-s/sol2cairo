@@ -29,12 +29,18 @@ struct StringValue {
 }
 #[derive(Debug)]
 
-enum IntegerValue {
+enum IntegerVariable {
     Literal(String),
     TypeCast {
         size: Option<u16>,
         value: Box<VariableValue>,
     },
+}
+#[derive(Debug)]
+
+struct IntegerValue {
+    pub value: IntegerVariable,
+    pub then: Option<Box<VariableValue>>,
 }
 #[derive(Debug)]
 
@@ -572,8 +578,10 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 return variable_value;
             } else if raw_value.strip_spaces().len() == 1 {
                 if let Ok(_val) = _identifier.parse::<usize>() {
-                    let variable_value =
-                        VariableValue::IntegerValue(IntegerValue::Literal(_identifier.to_owned()));
+                    let variable_value = VariableValue::IntegerValue(IntegerValue {
+                        value: IntegerVariable::Literal(_identifier.to_owned()),
+                        then: None,
+                    });
                     return variable_value;
                 } else {
                     let variable_value = VariableValue::IdentifierValue(_identifier.to_owned());
@@ -661,9 +669,13 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         }
         Token::Uint(_size) | Token::Int(_size) => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
-            let variable_value = VariableValue::IntegerValue(IntegerValue::TypeCast {
-                size: _size.to_owned(),
-                value: Box::new(process_variable_value(cast_value.to_vec(), line)),
+
+            let variable_value = VariableValue::IntegerValue(IntegerValue {
+                value: IntegerVariable::TypeCast {
+                    size: _size.to_owned(),
+                    value: Box::new(process_variable_value(cast_value.to_vec(), line)),
+                },
+                then: nested,
             });
             return variable_value;
         }
