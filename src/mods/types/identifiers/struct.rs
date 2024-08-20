@@ -19,7 +19,6 @@ pub trait TStructIdentifier {
 #[derive(Debug)]
 struct StructHeader {
     pub identifier: String,
-    // pub is_storage: bool,
 }
 
 #[derive(Debug)]
@@ -76,7 +75,6 @@ fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructId
     for lexem in lexems {
         let mut struct_types: Vec<StructType> = Vec::new();
         let mut struct_identifier = String::new();
-        // let mut is_storage = false;
         /* SANITY CHECKS */
         {
             if lexem.is_empty() {
@@ -210,11 +208,6 @@ fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructId
                                 },
                             );
 
-                            // if !is_storage {
-                            //     if let StructType::Mapping(_) = variant {
-                            //         is_storage = true;
-                            //     }
-                            // }
                             struct_types.push(variant);
                             combined.clear();
                         }
@@ -239,7 +232,6 @@ fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructId
         let struct_construct = StructIdentifier {
             header: StructHeader {
                 identifier: struct_identifier,
-                // is_storage,
             },
             types: struct_types,
             line: struct_line.to_string(),

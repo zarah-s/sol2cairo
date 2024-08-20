@@ -214,12 +214,10 @@ impl VariableValue {
                     VariableValue::od(&mut oth.access_then().as_mut().unwrap(), new)
                 }
             }
-            _ => {}
         }
     }
     fn access_then(&mut self) -> &mut Option<Box<VariableValue>> {
         match self {
-            VariableValue::AddressValue(value) => &mut value.then,
             VariableValue::FunctionValue(value) => &mut value.then,
             _ => {
                 panic!("Detected non method type")
@@ -546,7 +544,6 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 /* QUOTATION VALIDATIONS */
 
                 if raw_value.strip_spaces().len() != 1 {
-                    // println!("{:?}", raw_value);
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                         "Mismatch closing string. Expecting ; but found {}",
                         raw_value.strip_spaces().get(1).unwrap().to_string()
@@ -694,9 +691,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         }
         _ => {}
     }
-    // println!("{:?} raw", raw_value);
     VariableValue::None
-    // println!("{:?}", variable_value);
 }
 
 fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Box<VariableValue>>) {
@@ -736,8 +731,6 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
             Token::Dot => {
                 let mut methods = Vec::new();
                 let mut nest_open_paren = 0;
-                // let mut nest_close_paren_index = 0;
-                // let mut started = false;
                 let mut combined = Vec::new();
                 let methods_slice = raw_value.strip_spaces();
                 for tkn in &methods_slice[close_index + 1..] {
@@ -745,9 +738,6 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
                     match tkn {
                         Token::OpenParenthesis => {
                             nest_open_paren += 1;
-                            // if !started {
-                            //     started = true;
-                            // }
                         }
                         Token::CloseParenthesis => {
                             nest_open_paren -= 1;
@@ -779,18 +769,6 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
                         }
                     }
                 }
-
-                // let nest_value = &raw_value.strip_spaces()
-                //     [close_index + 2..close_index + nest_close_paren_index + 1];
-
-                // // println!("{:?}", &raw_value.strip_spaces()[close_index + 2..]);
-                // if nest_value.is_empty() {
-                //     CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
-                //         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                // } else {
-                //     nest = Some(Box::new(process_variable_value(nest_value.to_vec(), line)));
-                // }
-                // println!("{:?}", methods);
             }
             Token::CloseParenthesis => {}
             _ => {

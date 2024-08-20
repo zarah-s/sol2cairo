@@ -74,7 +74,6 @@ pub async fn compile_source_code(args: Vec<String>) {
                         break;
                     }
                     for token in &lex.data {
-                        // header_index_stop += 1;
                         if *token == Token::OpenBraces {
                             should_break = true;
                             break;
@@ -124,8 +123,6 @@ pub async fn compile_source_code(args: Vec<String>) {
             }
         }
 
-        // println!("{:?}", events);
-
         let _ = StructIdentifier::parse_structs(structs);
         let _ = parse_enums(enums);
 
@@ -133,7 +130,6 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
         parse_variables(vars);
-        // println!("{:#?}", _events);
 
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
