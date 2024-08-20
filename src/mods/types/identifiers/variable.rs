@@ -181,7 +181,10 @@ enum VariableValue {
     MappingValue(VariantValue),
     GlobalVarValue(VariantValue),
     IdentifierValue(String),
-    Context(Box<VariableValue>),
+    Context {
+        value: Box<VariableValue>,
+        then: Option<Box<VariableValue>>,
+    },
     Contractvalue(Contractvalue),
     InstanceValue(InstanceValue),
     NestedValue(NestedValue),
@@ -685,9 +688,32 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 )))
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
             }
-            let cast_value = &raw_value.strip_spaces()[1..raw_value.strip_spaces().len() - 1];
+            let mut open_paren = 1;
+            let mut close_index = 0;
+
+            for tkn in &raw_value.strip_spaces()[1..] {
+                match tkn {
+                    Token::OpenParenthesis => open_paren += 1,
+                    Token::CloseParenthesis => open_paren -= 1,
+                    _ => {}
+                }
+                close_index += 1;
+                if open_paren == 0 {
+                    break;
+                }
+            }
+            let cast_value = &raw_value.strip_spaces()[1..close_index];
+            let mut nest = VariableValue::None;
+            process_nested_methods(&raw_value.to_vec(), close_index, &mut nest, line);
             let variable_value = process_variable_value(cast_value.to_vec(), line);
-            return VariableValue::Context(Box::new(variable_value));
+            return VariableValue::Context {
+                value: Box::new(variable_value),
+                then: if let VariableValue::None = nest {
+                    None
+                } else {
+                    Some(Box::new(nest))
+                },
+            };
         }
         _ => {}
     }
@@ -726,6 +752,24 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
         }
     }
     let mut nest: VariableValue = VariableValue::None;
+    process_nested_methods(&raw_value, close_index, &mut nest, line);
+    let cast_value = &raw_value.strip_spaces()[2..close_index];
+    (
+        cast_value.to_vec(),
+        if let VariableValue::None = nest {
+            None
+        } else {
+            Some(Box::new(nest))
+        },
+    )
+}
+
+fn process_nested_methods(
+    raw_value: &Vec<Token>,
+    close_index: usize,
+    nest: &mut VariableValue,
+    line: i32,
+) {
     if raw_value.strip_spaces().get(close_index + 1).is_some() {
         match raw_value.strip_spaces()[close_index + 1] {
             Token::Dot => {
@@ -749,7 +793,6 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
                         _ => {}
                     }
                 }
-
                 if methods.is_empty() {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
@@ -776,14 +819,4 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
             }
         }
     }
-
-    let cast_value = &raw_value.strip_spaces()[2..close_index];
-    (
-        cast_value.to_vec(),
-        if let VariableValue::None = nest {
-            None
-        } else {
-            Some(Box::new(nest))
-        },
-    )
 }

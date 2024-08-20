@@ -3,17 +3,17 @@ pragma solidity ^0.8.24;
 
 library Name {
     //
-    address user = address   (address(0xa).arg().arch(1)).toString().toAddr();
-     bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
-     bytes bts = bytes(0x1);
-    jane owen
-     = string('can"t do').toBytes();
-     ad dfd =string(string(string(("hello world"))));
+    // address user = address   (address(0xa).arg().arch(1)).toString().toAddr();
+    //  bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
+    //  bytes bts = bytes(0x1);
+    // jane owen
+    //  = string('can"t do').toBytes();
+     ad dfd =(((((((string(("hello")))).add()).def().oi()))));
 
-     sdfd[] public constant jane=[1,2,3,4,5];
-event Transfer(uind.asd[(((100)))] indexed,address indexed);
+//      sdfd[] public constant jane=[1,2,3,4,5];
+// event Transfer(uind.asd[(((100)))] indexed,address indexed);
 
-    uint sdf = uint8(wed).to_bts().add();
+//     uint sdf = uint8(wed).to_bts().add();
 
     function oi() {
         {}
