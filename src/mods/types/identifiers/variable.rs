@@ -4,7 +4,7 @@ use crate::mods::{
     types::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         line_descriptors::LineDescriptions,
-        token::{Mutability, TTokenTrait, TVecExtension, Token, Visibility},
+        token::{Mutability, TStringExtension, TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
 #[derive(Debug)]
@@ -74,9 +74,15 @@ struct AddressValue {
 
 #[derive(Debug)]
 
-enum BooleanValue {
+enum BooleanVariable {
     Literal(String),
-    TypeCast(TypeCast),
+    TypeCast(Box<VariableValue>),
+}
+#[derive(Debug)]
+
+struct BooleanValue {
+    pub value: BooleanVariable,
+    pub then: Option<Box<VariableValue>>,
 }
 #[derive(Debug)]
 
@@ -181,7 +187,10 @@ enum VariableValue {
     MappingValue(VariantValue),
     GlobalVarValue(VariantValue),
     IdentifierValue(String),
-    Context(Box<VariableValue>),
+    Context {
+        value: Box<VariableValue>,
+        then: Option<Box<VariableValue>>,
+    },
     Contractvalue(Contractvalue),
     InstanceValue(InstanceValue),
     NestedValue(NestedValue),
@@ -540,16 +549,17 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
     }
     match &raw_value.strip_spaces()[0] {
         Token::Identifier(_identifier) => {
-            if _identifier.starts_with("\"") || _identifier.starts_with("'") {
+            let mut nest = VariableValue::None;
+
+            if raw_value.strip_spaces().len() > 1 {
+                if raw_value.strip_spaces()[1] == Token::Dot {
+                    process_raw_methods(&raw_value.strip_spaces()[1..], line, &mut nest);
+                }
+            }
+
+            if _identifier.tokenize().is_string_literal() {
                 /* QUOTATION VALIDATIONS */
 
-                if raw_value.strip_spaces().len() != 1 {
-                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                        "Mismatch closing string. Expecting ; but found {}",
-                        raw_value.strip_spaces().get(1).unwrap().to_string()
-                    )))
-                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
-                }
                 if _identifier.starts_with("\"") && !_identifier.ends_with("\"") {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                         "Mismatch closing string. Expecting \" but found {}",
@@ -570,14 +580,22 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
 
                 let variable_value = VariableValue::StringValue(StringValue {
                     value: StringVariable::Literal(val.to_string()),
-                    then: None,
+                    then: if let VariableValue::None = nest {
+                        None
+                    } else {
+                        Some(Box::new(nest))
+                    },
                 });
                 return variable_value;
             } else if raw_value.strip_spaces().len() == 1 {
-                if let Ok(_val) = _identifier.parse::<usize>() {
+                if _identifier.tokenize().is_integer_literal() {
                     let variable_value = VariableValue::IntegerValue(IntegerValue {
                         value: IntegerVariable::Literal(_identifier.to_owned()),
-                        then: None,
+                        then: if let VariableValue::None = nest {
+                            None
+                        } else {
+                            Some(Box::new(nest))
+                        },
                     });
                     return variable_value;
                 } else {
@@ -598,7 +616,11 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                 identifier: _identifier.to_string(),
                                 r#type: FunctionValueType::Defined,
                             },
-                            then: None,
+                            then: if let VariableValue::None = nest {
+                                None
+                            } else {
+                                Some(Box::new(nest))
+                            },
                         });
                         return variable_value;
                     } else {
@@ -618,15 +640,80 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                 identifier: _identifier.to_string(),
                                 r#type: FunctionValueType::Defined,
                             },
-                            then: None,
+                            then: if let VariableValue::None = nest {
+                                None
+                            } else {
+                                Some(Box::new(nest))
+                            },
                         });
 
                         return variable_value;
                     }
                 }
+            } else if _identifier.tokenize().is_integer_literal() {
+                let variable_value = VariableValue::IntegerValue(IntegerValue {
+                    value: IntegerVariable::Literal(_identifier.to_owned()),
+                    then: if let VariableValue::None = nest {
+                        None
+                    } else {
+                        Some(Box::new(nest))
+                    },
+                });
+                return variable_value;
             }
         }
 
+        Token::True => {
+            if raw_value.strip_spaces().len() > 1 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    "Cannot have method on boolean type",
+                ))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+            let variable_value = VariableValue::BooleanValue(BooleanValue {
+                value: BooleanVariable::Literal(Token::True.to_string()),
+                then: None,
+            });
+
+            return variable_value;
+        }
+
+        Token::Bool => {
+            let (cast_value, nested) = process_type_cast(raw_value, line);
+
+            let variable_value = VariableValue::BooleanValue(BooleanValue {
+                value: BooleanVariable::TypeCast(Box::new(process_variable_value(
+                    cast_value.to_vec(),
+                    line,
+                ))),
+                then: nested,
+            });
+            return variable_value;
+        }
+
+        Token::Hex => {
+            if raw_value.strip_spaces().len() != 2 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            if !raw_value.strip_spaces()[1].is_string_literal() {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    "Expecting string literal but got {}",
+                    raw_value.strip_spaces()[1].to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+            let val = &raw_value.strip_spaces()[1].to_string()
+                [1..raw_value.strip_spaces()[1].to_string().len() - 1];
+
+            let variable_value = VariableValue::BytesValue(BytesValue {
+                value: BytesVariable::Literal(val.to_string()),
+                then: None,
+            });
+
+            return variable_value;
+        }
         Token::String => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
@@ -685,12 +772,36 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 )))
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
             }
-            let cast_value = &raw_value.strip_spaces()[1..raw_value.strip_spaces().len() - 1];
+            let mut open_paren = 1;
+            let mut close_index = 0;
+
+            for tkn in &raw_value.strip_spaces()[1..] {
+                match tkn {
+                    Token::OpenParenthesis => open_paren += 1,
+                    Token::CloseParenthesis => open_paren -= 1,
+                    _ => {}
+                }
+                close_index += 1;
+                if open_paren == 0 {
+                    break;
+                }
+            }
+            let cast_value = &raw_value.strip_spaces()[1..close_index];
+            let mut nest = VariableValue::None;
+            process_nested_methods(&raw_value.to_vec(), close_index, &mut nest, line);
             let variable_value = process_variable_value(cast_value.to_vec(), line);
-            return VariableValue::Context(Box::new(variable_value));
+            return VariableValue::Context {
+                value: Box::new(variable_value),
+                then: if let VariableValue::None = nest {
+                    None
+                } else {
+                    Some(Box::new(nest))
+                },
+            };
         }
         _ => {}
     }
+    println!("{:?}", raw_value);
     VariableValue::None
 }
 
@@ -726,57 +837,7 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
         }
     }
     let mut nest: VariableValue = VariableValue::None;
-    if raw_value.strip_spaces().get(close_index + 1).is_some() {
-        match raw_value.strip_spaces()[close_index + 1] {
-            Token::Dot => {
-                let mut methods = Vec::new();
-                let mut nest_open_paren = 0;
-                let mut combined = Vec::new();
-                let methods_slice = raw_value.strip_spaces();
-                for tkn in &methods_slice[close_index + 1..] {
-                    combined.push(tkn.to_owned());
-                    match tkn {
-                        Token::OpenParenthesis => {
-                            nest_open_paren += 1;
-                        }
-                        Token::CloseParenthesis => {
-                            nest_open_paren -= 1;
-                            if nest_open_paren == 0 {
-                                methods.push(combined.to_owned());
-                                combined.clear();
-                            }
-                        }
-                        _ => {}
-                    }
-                }
-
-                if methods.is_empty() {
-                    CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
-                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                } else {
-                    for method in methods {
-                        if method.is_empty() {
-                            CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
-                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                        } else {
-                            match method[0] {
-                                Token::Dot => nest
-                                    .add_method(process_variable_value(method[1..].to_vec(), line)),
-                                _ => {
-                                    panic!("NOT A METHOD FOR PROCESS TYPE_CAST IN VARIABLE.RS")
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            Token::CloseParenthesis => {}
-            _ => {
-                panic!("Unexpected panic in variable.rs for process_type_cast")
-            }
-        }
-    }
-
+    process_nested_methods(&raw_value, close_index, &mut nest, line);
     let cast_value = &raw_value.strip_spaces()[2..close_index];
     (
         cast_value.to_vec(),
@@ -786,4 +847,66 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
             Some(Box::new(nest))
         },
     )
+}
+
+fn process_nested_methods(
+    raw_value: &Vec<Token>,
+    close_index: usize,
+    nest: &mut VariableValue,
+    line: i32,
+) {
+    if raw_value.strip_spaces().get(close_index + 1).is_some() {
+        match raw_value.strip_spaces()[close_index + 1] {
+            Token::Dot => {
+                let methods_slice = &raw_value.strip_spaces()[close_index + 1..];
+                process_raw_methods(methods_slice, line, nest);
+            }
+            Token::CloseParenthesis => {}
+            _ => {
+                panic!("Unexpected panic in variable.rs for process_type_cast")
+            }
+        }
+    }
+}
+
+fn process_raw_methods(methods_slice: &[Token], line: i32, nest: &mut VariableValue) {
+    let mut methods = Vec::new();
+    let mut nest_open_paren = 0;
+    let mut combined = Vec::new();
+    for tkn in methods_slice {
+        combined.push(tkn.to_owned());
+        match tkn {
+            Token::OpenParenthesis => {
+                nest_open_paren += 1;
+            }
+            Token::CloseParenthesis => {
+                nest_open_paren -= 1;
+                if nest_open_paren == 0 {
+                    methods.push(combined.to_owned());
+                    combined.clear();
+                }
+            }
+            _ => {}
+        }
+    }
+    if methods.is_empty() {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
+            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+    } else {
+        for method in methods {
+            if method.is_empty() {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            } else {
+                match method[0] {
+                    Token::Dot => {
+                        nest.add_method(process_variable_value(method[1..].to_vec(), line))
+                    }
+                    _ => {
+                        panic!("NOT A METHOD FOR PROCESS TYPE_CAST IN VARIABLE.RS")
+                    }
+                }
+            }
+        }
+    }
 }

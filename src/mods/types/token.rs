@@ -7,6 +7,7 @@ pub enum Token {
     Solidity,
     Library,
     Using,
+    Hex,
     Abstract,
     Emit,
     Call,
@@ -163,6 +164,9 @@ pub trait TTokenTrait {
     fn extract_mutability(&self) -> Mutability;
     fn is_symbol(&self) -> bool;
     fn is_keyword(&self) -> bool;
+    fn is_string_literal(&self) -> bool;
+    fn is_integer_literal(&self) -> bool;
+    fn is_boolean(&self) -> bool;
 }
 
 pub trait TVecExtension {
@@ -257,6 +261,29 @@ impl TTokenTrait for Token {
         detokenize(&self)
     }
 
+    fn is_boolean(&self) -> bool {
+        match self {
+            Token::True => true,
+            _ => false,
+        }
+    }
+    fn is_integer_literal(&self) -> bool {
+        is_integer_literal(self)
+    }
+
+    fn is_string_literal(&self) -> bool {
+        match self {
+            Token::Identifier(_identifier) => {
+                if _identifier.starts_with("\"") || _identifier.starts_with("'") {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
     fn is_keyword(&self) -> bool {
         let is_keyword = KEYWORDS.contains(&self.to_string().as_str());
         if is_keyword {
@@ -292,6 +319,29 @@ impl TTokenTrait for &Token {
     fn to_string(&self) -> String {
         detokenize(&self)
     }
+    fn is_boolean(&self) -> bool {
+        match self {
+            Token::True => true,
+            _ => false,
+        }
+    }
+    fn is_integer_literal(&self) -> bool {
+        is_integer_literal(self)
+    }
+
+    fn is_string_literal(&self) -> bool {
+        match self {
+            Token::Identifier(_identifier) => {
+                if _identifier.starts_with("\"") || _identifier.starts_with("'") {
+                    true
+                } else {
+                    false
+                }
+            }
+            _ => false,
+        }
+    }
+
     fn is_keyword(&self) -> bool {
         let is_keyword = KEYWORDS.contains(&self.to_string().as_str());
         if is_keyword {
@@ -324,10 +374,48 @@ impl TTokenTrait for &Token {
     }
 }
 
+fn is_integer_literal(input: &Token) -> bool {
+    match input {
+        Token::Identifier(value) => {
+            if let Ok(_) = value.parse::<usize>() {
+                return true;
+            } else {
+                if value.contains("_") {
+                    if let Ok(_) = &value
+                        .chars()
+                        .collect::<Vec<_>>()
+                        .first()
+                        .unwrap()
+                        .to_string()
+                        .parse::<usize>()
+                    {
+                        if let Ok(_) = value
+                            .split("_")
+                            .collect::<Vec<_>>()
+                            .join("")
+                            .parse::<usize>()
+                        {
+                            true
+                        } else {
+                            false
+                        }
+                    } else {
+                        false
+                    }
+                } else {
+                    false
+                }
+            }
+        }
+        _ => false,
+    }
+}
+
 fn detokenize(input: &Token) -> String {
     match input {
         Token::Contract => "contract".to_string(),
         Token::Emit => "emit".to_string(),
+        Token::Hex => "hex".to_string(),
         Token::Import => "import".to_string(),
         Token::Pragma => "pragma".to_string(),
         Token::From => "from".to_string(),
@@ -448,6 +536,7 @@ fn tokenize(input: &str) -> Token {
         " " | "" => Token::Space,
         "emit" => Token::Emit,
         "pragma" => Token::Pragma,
+        "hex" => Token::Hex,
         "import" => Token::Import,
         "from" => Token::From,
         "using" => Token::Using,

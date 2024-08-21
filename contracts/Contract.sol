@@ -8,8 +8,10 @@ library Name {
      bytes bts = bytes(0x1);
     jane owen
      = string('can"t do').toBytes();
-     ad dfd =string(string(string(("hello world"))));
-
+     ad dfd =(((((((string((5.toString())))).add()).def().oi()))));
+     bool oi = bool(true).concat();
+     bool cd = (((((true)))));
+bytes hexs = hex"adfadfad";
      sdfd[] public constant jane=[1,2,3,4,5];
 event Transfer(uind.asd[(((100)))] indexed,address indexed);
 
