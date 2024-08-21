@@ -4,7 +4,7 @@ use crate::mods::{
     types::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         line_descriptors::LineDescriptions,
-        token::{Mutability, TTokenTrait, TVecExtension, Token, Visibility},
+        token::{Mutability, TStringExtension, TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
 #[derive(Debug)]
@@ -74,9 +74,15 @@ struct AddressValue {
 
 #[derive(Debug)]
 
-enum BooleanValue {
+enum BooleanVariable {
     Literal(String),
-    TypeCast(TypeCast),
+    TypeCast(Box<VariableValue>),
+}
+#[derive(Debug)]
+
+struct BooleanValue {
+    pub value: BooleanVariable,
+    pub then: Option<Box<VariableValue>>,
 }
 #[derive(Debug)]
 
@@ -548,11 +554,10 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             if raw_value.strip_spaces().len() > 1 {
                 if raw_value.strip_spaces()[1] == Token::Dot {
                     process_raw_methods(&raw_value.strip_spaces()[1..], line, &mut nest);
-                    // println!("{:?}", &raw_value.strip_spaces()[1..]);
                 }
             }
 
-            if _identifier.starts_with("\"") || _identifier.starts_with("'") {
+            if _identifier.tokenize().is_string_literal() {
                 /* QUOTATION VALIDATIONS */
 
                 if _identifier.starts_with("\"") && !_identifier.ends_with("\"") {
@@ -583,7 +588,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 });
                 return variable_value;
             } else if raw_value.strip_spaces().len() == 1 {
-                if let Ok(_val) = _identifier.parse::<usize>() {
+                if _identifier.tokenize().is_integer_literal() {
                     let variable_value = VariableValue::IntegerValue(IntegerValue {
                         value: IntegerVariable::Literal(_identifier.to_owned()),
                         then: if let VariableValue::None = nest {
@@ -645,7 +650,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                         return variable_value;
                     }
                 }
-            } else if let Ok(_val) = _identifier.parse::<usize>() {
+            } else if _identifier.tokenize().is_integer_literal() {
                 let variable_value = VariableValue::IntegerValue(IntegerValue {
                     value: IntegerVariable::Literal(_identifier.to_owned()),
                     then: if let VariableValue::None = nest {
@@ -658,6 +663,33 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             }
         }
 
+        Token::True => {
+            if raw_value.strip_spaces().len() > 1 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    "Cannot have method on boolean type",
+                ))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+            let variable_value = VariableValue::BooleanValue(BooleanValue {
+                value: BooleanVariable::Literal(Token::True.to_string()),
+                then: None,
+            });
+
+            return variable_value;
+        }
+
+        Token::Bool => {
+            let (cast_value, nested) = process_type_cast(raw_value, line);
+
+            let variable_value = VariableValue::BooleanValue(BooleanValue {
+                value: BooleanVariable::TypeCast(Box::new(process_variable_value(
+                    cast_value.to_vec(),
+                    line,
+                ))),
+                then: nested,
+            });
+            return variable_value;
+        }
         Token::String => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
@@ -745,6 +777,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         }
         _ => {}
     }
+
     VariableValue::None
 }
 
