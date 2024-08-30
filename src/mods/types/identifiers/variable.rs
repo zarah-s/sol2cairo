@@ -554,14 +554,6 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
     }
     match &raw_value.strip_spaces()[0] {
         Token::Identifier(_identifier) => {
-            // let mut nest = VariableValue::None;
-
-            // if raw_value.strip_spaces().len() > 1 {
-            //     if raw_value.strip_spaces()[1] == Token::Dot {
-            //         process_raw_methods(&raw_value.strip_spaces()[1..], line, &mut nest);
-            //     }
-            // }
-
             if _identifier.tokenize().is_string_literal() {
                 /* QUOTATION VALIDATIONS */
 
@@ -1068,7 +1060,6 @@ fn process_nested_methods(
     line: i32,
 ) {
     if raw_value.strip_spaces().get(close_index + 1).is_some() {
-        println!("{:?} {}", raw_value.strip_spaces(), close_index);
         match raw_value.strip_spaces()[close_index + 1] {
             Token::Dot => {
                 let methods_slice = &raw_value.strip_spaces()[close_index + 1..];
