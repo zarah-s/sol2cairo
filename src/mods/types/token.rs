@@ -8,6 +8,7 @@ pub enum Token {
     Library,
     Using,
     Hex,
+    Colon,
     Abstract,
     Emit,
     Call,
@@ -415,6 +416,7 @@ fn detokenize(input: &Token) -> String {
     match input {
         Token::Contract => "contract".to_string(),
         Token::Emit => "emit".to_string(),
+        Token::Colon => ":".to_string(),
         Token::Hex => "hex".to_string(),
         Token::Import => "import".to_string(),
         Token::Pragma => "pragma".to_string(),
@@ -535,6 +537,7 @@ fn tokenize(input: &str) -> Token {
         "revert" => Token::Revert,
         " " | "" => Token::Space,
         "emit" => Token::Emit,
+        ":" => Token::Colon,
         "pragma" => Token::Pragma,
         "hex" => Token::Hex,
         "import" => Token::Import,

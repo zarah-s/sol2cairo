@@ -817,6 +817,12 @@ fn seperate_variant_variants(
 
                             lib_header.push(combined.clone());
                             combined.clear();
+                        } else {
+                            combined.push(LineDescriptions {
+                                data: tokens.clone(),
+                                line: _line_desc.line,
+                            });
+                            tokens.clear();
                         }
                     } else {
                         if !combined.is_empty() && terminator_type != TerminationTypeContext::None {
@@ -856,28 +862,53 @@ fn seperate_variant_variants(
                 Token::CloseBraces => {
                     opened_braces_count -= 1;
                     if opened_braces_count == 1 {
-                        if !tokens.is_empty() {
-                            combined.push(LineDescriptions {
-                                data: tokens.clone(),
-                                line: _line_desc.line,
-                            });
-                            tokens.clear();
-                        }
                         match terminator_type {
                             TerminationTypeContext::Struct => {
+                                if !tokens.is_empty() {
+                                    combined.push(LineDescriptions {
+                                        data: tokens.clone(),
+                                        line: _line_desc.line,
+                                    });
+                                    tokens.clear();
+                                }
                                 structs.push(combined.clone());
                                 combined.clear();
+                                terminator_type = TerminationTypeContext::None;
                             }
                             TerminationTypeContext::Enum => {
+                                if !tokens.is_empty() {
+                                    combined.push(LineDescriptions {
+                                        data: tokens.clone(),
+                                        line: _line_desc.line,
+                                    });
+                                    tokens.clear();
+                                }
                                 enums.push(combined.clone());
                                 combined.clear();
+                                terminator_type = TerminationTypeContext::None;
                             }
 
                             TerminationTypeContext::Function => {
+                                if !tokens.is_empty() {
+                                    combined.push(LineDescriptions {
+                                        data: tokens.clone(),
+                                        line: _line_desc.line,
+                                    });
+                                    tokens.clear();
+                                }
                                 functions.push(combined.clone());
                                 combined.clear();
+                                terminator_type = TerminationTypeContext::None;
                             }
+                            TerminationTypeContext::Variable => {}
                             _other => {
+                                if !tokens.is_empty() {
+                                    combined.push(LineDescriptions {
+                                        data: tokens.clone(),
+                                        line: _line_desc.line,
+                                    });
+                                    tokens.clear();
+                                }
                                 let mut stringified_error = String::new();
                                 for _combined in &combined {
                                     stringified_error.push_str(&_combined.data.to_string());
@@ -889,9 +920,9 @@ fn seperate_variant_variants(
                                     &std::env::var(FILE_PATH).unwrap(),
                                     combined.first().unwrap().line,
                                 );
+                                terminator_type = TerminationTypeContext::None;
                             }
                         }
-                        terminator_type = TerminationTypeContext::None;
                     } else if opened_braces_count == 0 {
                         if tokens.len() == 1 {
                             tokens.clear();
