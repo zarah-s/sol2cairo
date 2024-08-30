@@ -2,13 +2,15 @@
 pragma solidity ^0.8.24;
 
 library Name {
-    //
-    address user = address   (address(0xa).arg().arch(1)).toString().toAddr();
+
+    address yo = chiii({a:1,b:3}).to_val().another();
+    
+    address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
      bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
      bytes bts = bytes(0x1);
     jane owen
      = string('can"t do').toBytes();
-     ad dfd =(((((((string((5.toString())))).add()).def().oi()))));
+     ad dfd =(((((((string((5)))).add()).def().oi()))));
      bool oi = bool(true).concat();
      bool cd = (((((true)))));
 bytes hexs = hex"adfadfad";

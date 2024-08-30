@@ -69,9 +69,9 @@ pub const KEYWORDS: [&str; 66] = [
     "false",
 ];
 
-pub const SYMBOLS: [char; 24] = [
+pub const SYMBOLS: [char; 25] = [
     '+', '-', '/', '*', '(', ')', '[', ']', '{', '}', '>', '<', '.', '=', '!', '%', ';', '\'', '"',
-    ',', '|', '&', '~', '^',
+    ',', '|', '&', '~', '^', ':',
 ];
 
 pub const INTEGER_SIZES: [u16; 32] = [

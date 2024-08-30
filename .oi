@@ -575,32 +575,39 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 let val = &_identifier[1.._identifier.len() - 1];
                 /* VALUE HERE */
 
-                if raw_value.strip_spaces().len() != 1 {
-                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                        "Cannot call method on literal {}",
-                        raw_value.to_string()
-                    )))
-                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                let mut nest = VariableValue::None;
+
+                if raw_value.strip_spaces().len() > 1 {
+                    if raw_value.strip_spaces()[1] == Token::Dot {
+                        process_raw_methods(&raw_value.strip_spaces()[1..], line, &mut nest);
+                    }
                 }
 
                 let variable_value = VariableValue::StringValue(StringValue {
                     value: StringVariable::Literal(val.to_string()),
-                    then: None,
+                    then: if let VariableValue::None = nest {
+                        None
+                    } else {
+                        Some(Box::new(nest))
+                    },
                 });
                 return variable_value;
             } else if raw_value.strip_spaces().len() == 1 {
                 if _identifier.tokenize().is_integer_literal() {
-                    if raw_value.strip_spaces().len() != 1 {
-                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                            "Cannot call method on literal {}",
-                            raw_value.to_string()
-                        )))
-                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                    }
+                    let mut nest = VariableValue::None;
 
+                    if raw_value.strip_spaces().len() > 1 {
+                        if raw_value.strip_spaces()[1] == Token::Dot {
+                            process_raw_methods(&raw_value.strip_spaces()[1..], line, &mut nest);
+                        }
+                    }
                     let variable_value = VariableValue::IntegerValue(IntegerValue {
                         value: IntegerVariable::Literal(_identifier.to_owned()),
-                        then: None,
+                        then: if let VariableValue::None = nest {
+                            None
+                        } else {
+                            Some(Box::new(nest))
+                        },
                     });
                     return variable_value;
                 } else {
@@ -614,48 +621,22 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                 } else {
-                    let strip_data = &raw_value.strip_spaces()[1..];
+                    let raw_args = &raw_value.strip_spaces()[2..raw_value.strip_spaces().len() - 1];
 
-                    let mut paren = 0;
-                    let mut stop_index = 0;
-                    for _strip in strip_data {
-                        match _strip {
-                            Token::OpenParenthesis => {
-                                paren += 1;
-                            }
-                            Token::CloseParenthesis => {
-                                paren -= 1;
-                                if paren == 0 {
-                                    break;
-                                }
-                            }
+                    let mut paren = 1;
+                    for _cp in raw_args {
+                        match _cp {
                             _ => {}
                         }
-                        stop_index += 1;
                     }
+                    //here
+                    let mut nest = VariableValue::None;
 
-                    let mut nested = VariableValue::None;
-
-                    let method_data = &strip_data[stop_index + 1..];
-
-                    if !method_data.is_empty() {
-                        match method_data[0] {
-                            Token::Dot => {
-                                nested = process_variable_value(
-                                    strip_data[stop_index + 2..].to_vec(),
-                                    line,
-                                )
-                            }
-                            _ => CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                                "Unprocessible entity {}",
-                                raw_value.to_string()
-                            )))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line),
+                    if raw_value.strip_spaces().len() > 1 {
+                        if raw_value.strip_spaces()[1] == Token::Dot {
+                            process_raw_methods(&raw_value.strip_spaces()[1..], line, &mut nest);
                         }
                     }
-
-                    let raw_args = &strip_data[1..stop_index];
-
                     if raw_args.is_empty() {
                         let variable_value = VariableValue::FunctionValue(FunctionValue {
                             value: FunctionVariable {
@@ -663,10 +644,10 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                 identifier: _identifier.to_string(),
                                 r#type: FunctionValueType::Defined,
                             },
-                            then: if let VariableValue::None = nested {
+                            then: if let VariableValue::None = nest {
                                 None
                             } else {
-                                Some(Box::new(nested))
+                                Some(Box::new(nest))
                             },
                         });
                         return variable_value;
@@ -790,47 +771,17 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                     }
 
                                     arguments.push(ArgumentType::Named { key, value });
+
+                                    // println!("{:?}", value);
                                 }
                             }
                             _ => {
+                                // let mut arguments: Vec<ArgumentType> = Vec::new();
                                 let splitted_args = raw_args
                                     .split(|pred| *pred == Token::Coma)
                                     .collect::<Vec<_>>();
 
                                 for split in splitted_args {
-                                    if split.is_empty() {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            "Unprocessible entity",
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
-
-                                    if split.to_vec().strip_spaces().first().unwrap().is_symbol() {
-                                        match split.to_vec().strip_spaces().first().unwrap() {
-                                            Token::Plus | Token::Minus | Token::OpenParenthesis => {
-                                            }
-                                            _ => {
-                                                CompilerError::SyntaxError(
-                                                    SyntaxError::SyntaxError(&format!(
-                                                        "Unprocessible entity {}",
-                                                        split
-                                                            .to_vec()
-                                                            .strip_spaces()
-                                                            .first()
-                                                            .unwrap()
-                                                            .to_string()
-                                                    )),
-                                                )
-                                                .throw_with_file_info(
-                                                    &get_env_vars(FILE_PATH).unwrap(),
-                                                    line,
-                                                );
-                                            }
-                                        }
-                                    }
                                     let construct = process_variable_value(split.to_vec(), line);
                                     arguments.push(ArgumentType::Positional(construct));
                                 }
@@ -842,10 +793,10 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                 identifier: _identifier.to_string(),
                                 r#type: FunctionValueType::Defined,
                             },
-                            then: if let VariableValue::None = nested {
+                            then: if let VariableValue::None = nest {
                                 None
                             } else {
-                                Some(Box::new(nested))
+                                Some(Box::new(nest))
                             },
                         });
 
@@ -853,16 +804,20 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     }
                 }
             } else if _identifier.tokenize().is_integer_literal() {
-                if raw_value.strip_spaces().len() != 1 {
-                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                        "Cannot call method on literal {}",
-                        raw_value.to_string()
-                    )))
-                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                let mut nest = VariableValue::None;
+
+                if raw_value.strip_spaces().len() > 1 {
+                    if raw_value.strip_spaces()[1] == Token::Dot {
+                        process_raw_methods(&raw_value.strip_spaces()[1..], line, &mut nest);
+                    }
                 }
                 let variable_value = VariableValue::IntegerValue(IntegerValue {
                     value: IntegerVariable::Literal(_identifier.to_owned()),
-                    then: None,
+                    then: if let VariableValue::None = nest {
+                        None
+                    } else {
+                        Some(Box::new(nest))
+                    },
                 });
                 return variable_value;
             }
