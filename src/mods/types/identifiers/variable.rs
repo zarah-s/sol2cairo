@@ -140,12 +140,12 @@ struct IdentifierValue {
     pub value: String,
     pub then: Option<Box<VariableValue>>,
 }
-#[derive(Debug)]
+// #[derive(Debug)]
 
-struct VariantValue {
-    pub identifier: String,
-    pub variants: Vec<String>,
-}
+// struct VariantValue {
+//     pub identifier: String,
+//     pub variants: Vec<String>,
+// }
 #[derive(Debug)]
 
 struct StructInstanceValue {
@@ -182,28 +182,41 @@ struct NestedValue {
 }
 
 #[derive(Debug)]
+struct ArrayValue {
+    pub variants: Vec<VariableValue>,
+    pub then: Option<Box<VariableValue>>,
+}
+
+#[derive(Debug)]
+struct VariantValue {
+    pub variant: Box<VariableValue>,
+    pub then: Option<Box<VariableValue>>,
+}
+
+#[derive(Debug)]
 enum VariableValue {
     StringValue(StringValue),
-    ArrayValue(Vec<VariableValue>),
+    ArrayValue(ArrayValue),
     IntegerValue(IntegerValue),
     BytesValue(BytesValue),
     AddressValue(AddressValue),
     BooleanValue(BooleanValue),
     FunctionValue(FunctionValue),
-    StructValue(StructValue),
+    VariantValue(VariantValue),
+    // StructValue(StructValue),
     ExpressionValue(ExpressionValue),
-    StructOrFunctionValue(FunctionValue),
-    LibOrStructOrEnumValue(VariantValue),
-    MappingValue(VariantValue),
-    GlobalVarValue(VariantValue),
+    // StructOrFunctionValue(FunctionValue),
+    // LibOrStructOrEnumValue(VariantValue),
+    // MappingValue(VariantValue),
+    // GlobalVarValue(VariantValue),
     IdentifierValue(IdentifierValue),
     Context {
         value: Box<VariableValue>,
         then: Option<Box<VariableValue>>,
     },
-    Contractvalue(Contractvalue),
+    // Contractvalue(Contractvalue),
     InstanceValue(InstanceValue),
-    NestedValue(NestedValue),
+    // NestedValue(NestedValue),
     None,
 }
 
@@ -892,6 +905,94 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 });
                 return variable_value;
             }
+        }
+
+        Token::OpenSquareBracket => {
+            let mut open_contex = 0;
+            let mut iteration = 0;
+            for _strip in raw_value.strip_spaces() {
+                match _strip {
+                    Token::OpenSquareBracket => {
+                        open_contex += 1;
+                    }
+                    Token::CloseSquareBracket => {
+                        open_contex -= 1;
+                        if open_contex == 0 {
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+                iteration += 1;
+            }
+
+            let mut nested = VariableValue::None;
+            let raw_variants = &raw_value.strip_spaces()[1..iteration];
+            let method_data = &raw_value.strip_spaces()[iteration + 1..];
+            let mut variants: Vec<VariableValue> = Vec::new();
+
+            let splits = raw_variants
+                .split(|pred| *pred == Token::Coma)
+                .collect::<Vec<_>>();
+            for split in splits {
+                if split.is_empty() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Unprocessible entity {}",
+                        raw_value.to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                }
+                variants.push(process_variable_value(split.to_vec(), line));
+            }
+
+            if !method_data.is_empty() {
+                match method_data[0] {
+                    Token::Dot => {
+                        nested = process_variable_value(
+                            raw_value.strip_spaces()[iteration + 2..].to_vec(),
+                            line,
+                        )
+                    }
+                    Token::OpenSquareBracket => {
+                        nested = process_variable_value(
+                            raw_value.strip_spaces()[iteration + 1..].to_vec(),
+                            line,
+                        )
+                    }
+                    _ => CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Unprocessible entity {}",
+                        raw_value.to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line),
+                }
+            }
+
+            let variable_value = VariableValue::ArrayValue(ArrayValue {
+                variants,
+                then: if let VariableValue::None = nested {
+                    None
+                } else {
+                    if let VariableValue::ArrayValue(_value) = &nested {
+                        /* VALIDATIONS */
+                        if _value.variants.len() != 1 {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "Unprocessible entity",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                        }
+
+                        if let Some(_) = _value.then {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "Unprocessible entity",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+                    }
+                    Some(Box::new(nested))
+                },
+            });
+
+            return variable_value;
         }
 
         Token::True => {
