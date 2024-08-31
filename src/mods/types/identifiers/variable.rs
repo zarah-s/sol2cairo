@@ -633,81 +633,110 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 && raw_value.strip_spaces()[1] == Token::OpenParenthesis
             {
                 /* PROCESSING FUNCTION OR METHOD CALL */
-                if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
+
+                let strip_data = &raw_value.strip_spaces()[1..];
+
+                let mut paren = 0;
+                let mut stop_index = 0;
+                for _strip in strip_data {
+                    match _strip {
+                        Token::OpenParenthesis => {
+                            paren += 1;
+                        }
+                        Token::CloseParenthesis => {
+                            paren -= 1;
+                            if paren == 0 {
+                                break;
+                            }
+                        }
+                        _ => {}
+                    }
+                    stop_index += 1;
+                }
+
+                if paren != 0 {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                }
+                let mut nested = VariableValue::None;
+
+                let method_data = &strip_data[stop_index + 1..];
+
+                if !method_data.is_empty() {
+                    match method_data[0] {
+                        Token::Dot => {
+                            nested =
+                                process_variable_value(strip_data[stop_index + 2..].to_vec(), line)
+                        }
+                        Token::OpenSquareBracket => {
+                            nested =
+                                process_variable_value(strip_data[stop_index + 1..].to_vec(), line);
+                            if let VariableValue::ArrayValue(_value) = &nested {
+                                /* VALIDATIONS */
+                                if _value.variants.len() != 1 {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unprocessible entity",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                                }
+
+                                if let Some(_) = _value.then {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unprocessible entity",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
+                            }
+                        }
+                        _ => CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "Unprocessible entity {}",
+                            raw_value.to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line),
+                    }
+                }
+
+                let raw_args = &strip_data[1..stop_index];
+
+                if raw_args.is_empty() {
+                    let variable_value = VariableValue::FunctionValue(FunctionValue {
+                        value: FunctionVariable {
+                            arguments: None,
+                            identifier: _identifier.to_string(),
+                            r#type: FunctionValueType::Defined,
+                        },
+                        then: if let VariableValue::None = nested {
+                            None
+                        } else {
+                            Some(Box::new(nested))
+                        },
+                    });
+                    return variable_value;
                 } else {
-                    let strip_data = &raw_value.strip_spaces()[1..];
+                    let mut arguments: Vec<ArgumentType> = Vec::new();
 
-                    let mut paren = 0;
-                    let mut stop_index = 0;
-                    for _strip in strip_data {
-                        match _strip {
-                            Token::OpenParenthesis => {
-                                paren += 1;
+                    match raw_args[0] {
+                        Token::OpenBraces => {
+                            /* VALIDATION */
+                            if *raw_args.last().unwrap() != Token::CloseBraces {
+                                CompilerError::SyntaxError(SyntaxError::MissingToken("}"))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                             }
-                            Token::CloseParenthesis => {
-                                paren -= 1;
-                                if paren == 0 {
-                                    break;
-                                }
+                            let named_args = &raw_args[1..raw_args.len() - 1];
+                            if named_args.is_empty() {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                    "Unprocessible entity for {}",
+                                    raw_value.to_string()
+                                )))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                             }
-                            _ => {}
-                        }
-                        stop_index += 1;
-                    }
 
-                    let mut nested = VariableValue::None;
+                            let splitted_named_args = named_args
+                                .split(|pred| *pred == Token::Coma)
+                                .collect::<Vec<_>>();
 
-                    let method_data = &strip_data[stop_index + 1..];
-
-                    if !method_data.is_empty() {
-                        match method_data[0] {
-                            Token::Dot => {
-                                nested = process_variable_value(
-                                    strip_data[stop_index + 2..].to_vec(),
-                                    line,
-                                )
-                            }
-                            _ => CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                                "Unprocessible entity {}",
-                                raw_value.to_string()
-                            )))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line),
-                        }
-                    }
-
-                    let raw_args = &strip_data[1..stop_index];
-
-                    if raw_args.is_empty() {
-                        let variable_value = VariableValue::FunctionValue(FunctionValue {
-                            value: FunctionVariable {
-                                arguments: None,
-                                identifier: _identifier.to_string(),
-                                r#type: FunctionValueType::Defined,
-                            },
-                            then: if let VariableValue::None = nested {
-                                None
-                            } else {
-                                Some(Box::new(nested))
-                            },
-                        });
-                        return variable_value;
-                    } else {
-                        let mut arguments: Vec<ArgumentType> = Vec::new();
-
-                        match raw_args[0] {
-                            Token::OpenBraces => {
-                                /* VALIDATION */
-                                if *raw_args.last().unwrap() != Token::CloseBraces {
-                                    CompilerError::SyntaxError(SyntaxError::MissingToken("}"))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                }
-                                let named_args = &raw_args[1..raw_args.len() - 1];
-                                if named_args.is_empty() {
+                            for _split in splitted_named_args {
+                                if _split.is_empty() {
                                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                                         "Unprocessible entity for {}",
                                         raw_value.to_string()
@@ -715,12 +744,52 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                                 }
 
-                                let splitted_named_args = named_args
-                                    .split(|pred| *pred == Token::Coma)
+                                let key_value_split = _split
+                                    .split(|pred| *pred == Token::Colon)
                                     .collect::<Vec<_>>();
 
-                                for _split in splitted_named_args {
-                                    if _split.is_empty() {
+                                /* VALIDATIONS */
+                                if key_value_split.len() != 2 {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                        "Unprocessible entity for {}",
+                                        raw_value.to_string()
+                                    )))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
+
+                                if key_value_split[0].len() != 1 {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                        "Unprocessible entity for {}",
+                                        raw_value.to_string()
+                                    )))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
+
+                                if key_value_split[1].is_empty() {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                        "Unprocessible entity for {}",
+                                        raw_value.to_string()
+                                    )))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
+
+                                let mut key = String::new();
+                                let value =
+                                    process_variable_value(key_value_split[1].to_vec(), line);
+
+                                if let VariableValue::None = value {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                        "Unprocessible entity for {}",
+                                        raw_value.to_string()
+                                    )))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
+
+                                match &key_value_split[0][0] {
+                                    Token::Identifier(_key) => {
+                                        key.push_str(&_key);
+                                    }
+                                    _ => {
                                         CompilerError::SyntaxError(SyntaxError::SyntaxError(
                                             &format!(
                                                 "Unprocessible entity for {}",
@@ -732,77 +801,37 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                             line,
                                         );
                                     }
+                                }
 
-                                    let key_value_split = _split
-                                        .split(|pred| *pred == Token::Colon)
-                                        .collect::<Vec<_>>();
+                                arguments.push(ArgumentType::Named { key, value });
+                            }
+                        }
+                        _ => {
+                            let splitted_args = raw_args
+                                .split(|pred| *pred == Token::Coma)
+                                .collect::<Vec<_>>();
 
-                                    /* VALIDATIONS */
-                                    if key_value_split.len() != 2 {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            &format!(
-                                                "Unprocessible entity for {}",
-                                                raw_value.to_string()
-                                            ),
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
+                            for split in splitted_args {
+                                if split.is_empty() {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unprocessible entity",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
 
-                                    if key_value_split[0].len() != 1 {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            &format!(
-                                                "Unprocessible entity for {}",
-                                                raw_value.to_string()
-                                            ),
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
-
-                                    if key_value_split[1].is_empty() {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            &format!(
-                                                "Unprocessible entity for {}",
-                                                raw_value.to_string()
-                                            ),
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
-
-                                    let mut key = String::new();
-                                    let value =
-                                        process_variable_value(key_value_split[1].to_vec(), line);
-
-                                    if let VariableValue::None = value {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            &format!(
-                                                "Unprocessible entity for {}",
-                                                raw_value.to_string()
-                                            ),
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
-
-                                    match &key_value_split[0][0] {
-                                        Token::Identifier(_key) => {
-                                            key.push_str(&_key);
-                                        }
+                                if split.to_vec().strip_spaces().first().unwrap().is_symbol() {
+                                    match split.to_vec().strip_spaces().first().unwrap() {
+                                        Token::Plus | Token::Minus | Token::OpenParenthesis => {}
                                         _ => {
                                             CompilerError::SyntaxError(SyntaxError::SyntaxError(
                                                 &format!(
-                                                    "Unprocessible entity for {}",
-                                                    raw_value.to_string()
+                                                    "Unprocessible entity {}",
+                                                    split
+                                                        .to_vec()
+                                                        .strip_spaces()
+                                                        .first()
+                                                        .unwrap()
+                                                        .to_string()
                                                 ),
                                             ))
                                             .throw_with_file_info(
@@ -811,69 +840,26 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                             );
                                         }
                                     }
-
-                                    arguments.push(ArgumentType::Named { key, value });
                                 }
-                            }
-                            _ => {
-                                let splitted_args = raw_args
-                                    .split(|pred| *pred == Token::Coma)
-                                    .collect::<Vec<_>>();
-
-                                for split in splitted_args {
-                                    if split.is_empty() {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            "Unprocessible entity",
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
-
-                                    if split.to_vec().strip_spaces().first().unwrap().is_symbol() {
-                                        match split.to_vec().strip_spaces().first().unwrap() {
-                                            Token::Plus | Token::Minus | Token::OpenParenthesis => {
-                                            }
-                                            _ => {
-                                                CompilerError::SyntaxError(
-                                                    SyntaxError::SyntaxError(&format!(
-                                                        "Unprocessible entity {}",
-                                                        split
-                                                            .to_vec()
-                                                            .strip_spaces()
-                                                            .first()
-                                                            .unwrap()
-                                                            .to_string()
-                                                    )),
-                                                )
-                                                .throw_with_file_info(
-                                                    &get_env_vars(FILE_PATH).unwrap(),
-                                                    line,
-                                                );
-                                            }
-                                        }
-                                    }
-                                    let construct = process_variable_value(split.to_vec(), line);
-                                    arguments.push(ArgumentType::Positional(construct));
-                                }
+                                let construct = process_variable_value(split.to_vec(), line);
+                                arguments.push(ArgumentType::Positional(construct));
                             }
                         }
-                        let variable_value = VariableValue::FunctionValue(FunctionValue {
-                            value: FunctionVariable {
-                                arguments: Some(arguments),
-                                identifier: _identifier.to_string(),
-                                r#type: FunctionValueType::Defined,
-                            },
-                            then: if let VariableValue::None = nested {
-                                None
-                            } else {
-                                Some(Box::new(nested))
-                            },
-                        });
-
-                        return variable_value;
                     }
+                    let variable_value = VariableValue::FunctionValue(FunctionValue {
+                        value: FunctionVariable {
+                            arguments: Some(arguments),
+                            identifier: _identifier.to_string(),
+                            r#type: FunctionValueType::Defined,
+                        },
+                        then: if let VariableValue::None = nested {
+                            None
+                        } else {
+                            Some(Box::new(nested))
+                        },
+                    });
+
+                    return variable_value;
                 }
             } else if raw_value.strip_spaces().len() > 1
                 && raw_value.strip_spaces()[1] == Token::Dot
@@ -926,23 +912,29 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 iteration += 1;
             }
 
+            if open_contex != 0 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
             let mut nested = VariableValue::None;
             let raw_variants = &raw_value.strip_spaces()[1..iteration];
             let method_data = &raw_value.strip_spaces()[iteration + 1..];
             let mut variants: Vec<VariableValue> = Vec::new();
 
-            let splits = raw_variants
-                .split(|pred| *pred == Token::Coma)
-                .collect::<Vec<_>>();
-            for split in splits {
-                if split.is_empty() {
-                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                        "Unprocessible entity {}",
-                        raw_value.to_string()
-                    )))
-                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+            if !raw_variants.is_empty() {
+                let splits = raw_variants
+                    .split(|pred| *pred == Token::Coma)
+                    .collect::<Vec<_>>();
+                for split in splits {
+                    if split.is_empty() {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "Unprocessible entity {}",
+                            raw_value.to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                    }
+                    variants.push(process_variable_value(split.to_vec(), line));
                 }
-                variants.push(process_variable_value(split.to_vec(), line));
             }
 
             if !method_data.is_empty() {
@@ -957,7 +949,23 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                         nested = process_variable_value(
                             raw_value.strip_spaces()[iteration + 1..].to_vec(),
                             line,
-                        )
+                        );
+                        if let VariableValue::ArrayValue(_value) = &nested {
+                            /* VALIDATIONS */
+                            if _value.variants.len() != 1 {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                    "Unprocessible entity",
+                                ))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                            }
+
+                            if let Some(_) = _value.then {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                    "Unprocessible entity",
+                                ))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                            }
+                        }
                     }
                     _ => CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                         "Unprocessible entity {}",
@@ -972,22 +980,6 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 then: if let VariableValue::None = nested {
                     None
                 } else {
-                    if let VariableValue::ArrayValue(_value) = &nested {
-                        /* VALIDATIONS */
-                        if _value.variants.len() != 1 {
-                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                "Unprocessible entity",
-                            ))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
-                        }
-
-                        if let Some(_) = _value.then {
-                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                "Unprocessible entity",
-                            ))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                        }
-                    }
                     Some(Box::new(nested))
                 },
             });
@@ -1118,6 +1110,10 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     break;
                 }
             }
+            if open_paren != 0 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
             let cast_value = &raw_value.strip_spaces()[1..close_index];
             let mut nest = VariableValue::None;
             process_nested_methods(&raw_value.to_vec(), close_index, &mut nest, line);
@@ -1166,6 +1162,10 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
         if open_paren == 0 {
             break;
         }
+    }
+    if open_paren != 0 {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
+            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
     }
     let mut nest: VariableValue = VariableValue::None;
     process_nested_methods(&raw_value, close_index, &mut nest, line);
@@ -1219,6 +1219,10 @@ fn process_raw_methods(methods_slice: &[Token], line: i32, nest: &mut VariableVa
             }
             _ => {}
         }
+    }
+    if nest_open_paren != 0 {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
+            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
     }
     if methods.is_empty() {
         CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
