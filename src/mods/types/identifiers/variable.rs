@@ -136,6 +136,11 @@ struct FunctionValue {
     pub then: Option<Box<VariableValue>>,
 }
 #[derive(Debug)]
+struct IdentifierValue {
+    pub value: String,
+    pub then: Option<Box<VariableValue>>,
+}
+#[derive(Debug)]
 
 struct VariantValue {
     pub identifier: String,
@@ -191,7 +196,7 @@ enum VariableValue {
     LibOrStructOrEnumValue(VariantValue),
     MappingValue(VariantValue),
     GlobalVarValue(VariantValue),
-    IdentifierValue(String),
+    IdentifierValue(IdentifierValue),
     Context {
         value: Box<VariableValue>,
         then: Option<Box<VariableValue>>,
@@ -552,6 +557,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         CompilerError::SyntaxError(SyntaxError::SyntaxError(""))
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
     }
+
     match &raw_value.strip_spaces()[0] {
         Token::Identifier(_identifier) => {
             if _identifier.tokenize().is_string_literal() {
@@ -604,12 +610,16 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     });
                     return variable_value;
                 } else {
-                    let variable_value = VariableValue::IdentifierValue(_identifier.to_owned());
+                    let variable_value = VariableValue::IdentifierValue(IdentifierValue {
+                        value: _identifier.to_owned(),
+                        then: None,
+                    });
                     return variable_value;
                 }
             } else if raw_value.strip_spaces().len() > 1
                 && raw_value.strip_spaces()[1] == Token::OpenParenthesis
             {
+                /* PROCESSING FUNCTION OR METHOD CALL */
                 if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
@@ -852,6 +862,22 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                         return variable_value;
                     }
                 }
+            } else if raw_value.strip_spaces().len() > 1
+                && raw_value.strip_spaces()[1] == Token::Dot
+            {
+                let methods = &raw_value.strip_spaces()[2..];
+                if methods.is_empty() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                }
+
+                let nest = process_variable_value(raw_value.strip_spaces()[2..].to_vec(), line);
+                let variable_value = VariableValue::IdentifierValue(IdentifierValue {
+                    value: _identifier.to_string(),
+                    then: Some(Box::new(nest)),
+                });
+
+                return variable_value;
             } else if _identifier.tokenize().is_integer_literal() {
                 if raw_value.strip_spaces().len() != 1 {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
