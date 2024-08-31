@@ -877,6 +877,21 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 });
 
                 return variable_value;
+            } else if raw_value.strip_spaces().len() > 1
+                && raw_value.strip_spaces()[1] == Token::OpenSquareBracket
+            {
+                let methods = &raw_value.strip_spaces()[1..];
+                if methods.is_empty() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                }
+
+                let nest = process_variable_value(raw_value.strip_spaces()[1..].to_vec(), line);
+                let variable_value = VariableValue::IdentifierValue(IdentifierValue {
+                    value: _identifier.to_string(),
+                    then: Some(Box::new(nest)),
+                });
+                return variable_value;
             } else if _identifier.tokenize().is_integer_literal() {
                 if raw_value.strip_spaces().len() != 1 {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
@@ -920,20 +935,24 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             let raw_variants = &raw_value.strip_spaces()[1..iteration];
             let method_data = &raw_value.strip_spaces()[iteration + 1..];
             let mut variants: Vec<VariableValue> = Vec::new();
-
+            let mut single_variant = None;
             if !raw_variants.is_empty() {
                 let splits = raw_variants
                     .split(|pred| *pred == Token::Coma)
                     .collect::<Vec<_>>();
-                for split in splits {
-                    if split.is_empty() {
-                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                            "Unprocessible entity {}",
-                            raw_value.to_string()
-                        )))
-                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                if splits.len() == 1 {
+                    single_variant = Some(process_variable_value(splits[0].to_vec(), line));
+                } else {
+                    for split in splits {
+                        if split.is_empty() {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                "Unprocessible entity {}",
+                                raw_value.to_string()
+                            )))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                        }
+                        variants.push(process_variable_value(split.to_vec(), line));
                     }
-                    variants.push(process_variable_value(split.to_vec(), line));
                 }
             }
 
@@ -975,14 +994,25 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 }
             }
 
-            let variable_value = VariableValue::ArrayValue(ArrayValue {
-                variants,
-                then: if let VariableValue::None = nested {
-                    None
-                } else {
-                    Some(Box::new(nested))
-                },
-            });
+            let variable_value = if single_variant.is_none() {
+                VariableValue::ArrayValue(ArrayValue {
+                    variants,
+                    then: if let VariableValue::None = nested {
+                        None
+                    } else {
+                        Some(Box::new(nested))
+                    },
+                })
+            } else {
+                VariableValue::VariantValue(VariantValue {
+                    variant: Box::new(single_variant.unwrap()),
+                    then: if let VariableValue::None = nested {
+                        None
+                    } else {
+                        Some(Box::new(nested))
+                    },
+                })
+            };
 
             return variable_value;
         }
