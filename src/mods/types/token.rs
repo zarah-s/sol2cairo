@@ -168,6 +168,7 @@ pub trait TTokenTrait {
     fn is_string_literal(&self) -> bool;
     fn is_integer_literal(&self) -> bool;
     fn is_boolean(&self) -> bool;
+    fn is_data_type(&self) -> bool;
 }
 
 pub trait TVecExtension {
@@ -262,6 +263,18 @@ impl TTokenTrait for Token {
         detokenize(&self)
     }
 
+    fn is_data_type(&self) -> bool {
+        match self {
+            Token::Uint(_)
+            | Token::Int(_)
+            | Token::Bytes(_)
+            | Token::Address
+            | Token::String
+            | Token::Bool => true,
+            _ => false,
+        }
+    }
+
     fn is_boolean(&self) -> bool {
         match self {
             Token::True => true,
@@ -319,6 +332,17 @@ impl TTokenTrait for Token {
 impl TTokenTrait for &Token {
     fn to_string(&self) -> String {
         detokenize(&self)
+    }
+    fn is_data_type(&self) -> bool {
+        match self {
+            Token::Uint(_)
+            | Token::Int(_)
+            | Token::Bytes(_)
+            | Token::Address
+            | Token::String
+            | Token::Bool => true,
+            _ => false,
+        }
     }
     fn is_boolean(&self) -> bool {
         match self {
