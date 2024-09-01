@@ -632,10 +632,6 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     });
                     return variable_value;
                 } else {
-                    validate_identifier(&_identifier).unwrap_or_else(|err| {
-                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                    });
                     let variable_value = VariableValue::IdentifierValue(IdentifierValue {
                         value: _identifier.to_owned(),
                         then: None,
@@ -1342,7 +1338,6 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             };
         }
         _ => {
-            println!("{:?}", raw_value.strip_spaces());
             CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                 "Unprocessible entity. {}",
                 raw_value.to_string()

@@ -5,21 +5,21 @@ library Name {
 
     address yo = jane[1]()(1)();
     
-//     address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
-//      bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
-//      bytes bts = bytes(0x1);
-//     jane owen
-//      = string('can"t do').toBytes();
-//      ad dfd =(((((((string((5)))).add()).def().oi()))));
-//      bool oi = bool(true).concat();
-//      bool cd = (((((true)))));
-// bytes hexs = hex"adfadfad";
-//      sdfd[] public constant jane=[1,2,3,4,5][get_random().clone()];
-// event Transfer(uind.asd[(((100)))] indexed,address indexed);
-// sd yo = new Toes[]((2000_000).add()).com();
-//  Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+    address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
+     bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
+     bytes bts = bytes(0x1);
+    jane owen
+     = string('can"t do').toBytes();
+     ad dfd =(((((((string((5)))).add()).def().oi()))));
+     bool oi = bool(true).concat();
+     bool cd = (((((true)))));
+bytes hexs = hex"adfadfad";
+     sdfd[] public constant jane=[1,2,3,4,5][get_random().clone()];
+event Transfer(uind.asd[(((100)))] indexed,address indexed);
+sd yo = new Toes[]((2000_000).add()).com();
+ Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 //  function() internal  view returns(address) selectedFunction;
-    // uint sdf = uint8(wed).to_bts().add();
+    uint sdf = uint8(wed).to_bts().add();
 
     function oi() {
         {}
