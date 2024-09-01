@@ -142,6 +142,7 @@ pub fn process_name(
     Ok(())
 }
 
+/// Validate identifier regex
 pub fn validate_identifier(haystack: &str) -> Result<(), String> {
     let identifier_pattern = Regex::new(r"^[a-zA-Z_][a-zA-Z0-9_]*$").unwrap();
 
