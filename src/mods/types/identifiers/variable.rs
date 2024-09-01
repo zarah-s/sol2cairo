@@ -164,7 +164,7 @@ enum StructValue {
 struct InstanceVariable {
     pub r#type: String,
     pub arguments: Option<Vec<ArgumentType>>,
-    pub size: Option<String>,
+    pub size: Option<Box<VariableValue>>,
 }
 
 #[derive(Debug)]
@@ -1072,9 +1072,9 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                                 }
 
-                                let mut nested = VariableValue::None;
-                                let raw_args = &stripped_spaces[3..iteration];
-                                let method_data = &stripped_spaces[iteration + 1..];
+                                let mut nested: VariableValue = VariableValue::None;
+                                let raw_args: &[Token] = &stripped_spaces[3..iteration];
+                                let method_data: &[Token] = &stripped_spaces[iteration + 1..];
 
                                 if !method_data.is_empty() {
                                     match method_data[0] {
@@ -1172,6 +1172,169 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                             }
                         }
                     }
+                    Token::OpenSquareBracket => {
+                        let mut variant_open_contex = 0;
+                        let mut variant_iteration = 0;
+
+                        for _strip in &stripped_spaces {
+                            match _strip {
+                                Token::OpenSquareBracket => {
+                                    variant_open_contex += 1;
+                                }
+                                Token::CloseSquareBracket => {
+                                    variant_open_contex -= 1;
+                                    if variant_open_contex == 0 {
+                                        break;
+                                    }
+                                }
+                                _ => {}
+                            }
+                            variant_iteration += 1;
+                        }
+
+                        if variant_open_contex != 0 {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+
+                        let variants = &stripped_spaces[3..variant_iteration];
+                        if !variants.is_empty() {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "Unprocessible entity",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+                        let arg_data = &stripped_spaces[variant_iteration + 1..];
+                        if arg_data.is_empty() {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "Unprocessible entity",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+
+                        match arg_data[0] {
+                            Token::OpenParenthesis => {
+                                let mut arg_open_contex = 0;
+                                let mut arg_iteration = 0;
+
+                                for _strip in arg_data {
+                                    match _strip {
+                                        Token::OpenParenthesis => {
+                                            arg_open_contex += 1;
+                                        }
+                                        Token::CloseParenthesis => {
+                                            arg_open_contex -= 1;
+                                            if arg_open_contex == 0 {
+                                                break;
+                                            }
+                                        }
+                                        _ => {}
+                                    }
+                                    arg_iteration += 1;
+                                }
+
+                                if arg_open_contex != 0 {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Missing )",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
+
+                                let raw_args = &arg_data[1..arg_iteration];
+                                if raw_args.is_empty() {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unprocessible entity. Expecting size",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
+                                if raw_args[0] == Token::OpenBraces {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unprocessible entity",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
+
+                                let size = process_variable_value(raw_args.to_vec(), line);
+                                let method_data = &arg_data[arg_iteration + 1..];
+                                let mut nested = VariableValue::None;
+
+                                if !method_data.is_empty() {
+                                    match method_data[0] {
+                                        Token::Dot => {
+                                            nested = process_variable_value(
+                                                arg_data[arg_iteration + 2..].to_vec(),
+                                                line,
+                                            )
+                                        }
+                                        Token::OpenSquareBracket => {
+                                            nested = process_variable_value(
+                                                arg_data[arg_iteration + 1..].to_vec(),
+                                                line,
+                                            );
+                                            if let VariableValue::ArrayValue(_value) = &nested {
+                                                /* VALIDATIONS */
+                                                if _value.variants.len() != 1 {
+                                                    CompilerError::SyntaxError(
+                                                        SyntaxError::SyntaxError(
+                                                            "Unprocessible entity",
+                                                        ),
+                                                    )
+                                                    .throw_with_file_info(
+                                                        &get_env_vars(FILE_PATH).unwrap(),
+                                                        line,
+                                                    )
+                                                }
+
+                                                if let Some(_) = _value.then {
+                                                    CompilerError::SyntaxError(
+                                                        SyntaxError::SyntaxError(
+                                                            "Unprocessible entity",
+                                                        ),
+                                                    )
+                                                    .throw_with_file_info(
+                                                        &get_env_vars(FILE_PATH).unwrap(),
+                                                        line,
+                                                    );
+                                                }
+                                            }
+                                        }
+                                        _ => CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                            &format!(
+                                                "Unprocessible entity {}",
+                                                raw_value.to_string()
+                                            ),
+                                        ))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        ),
+                                    }
+                                }
+
+                                let variable_value = VariableValue::InstanceValue(InstanceValue {
+                                    value: InstanceVariable {
+                                        r#type: stripped_spaces[1].to_string(),
+                                        size: Some(Box::new(size)),
+                                        arguments: None,
+                                    },
+                                    then: if let VariableValue::None = nested {
+                                        None
+                                    } else {
+                                        Some(Box::new(nested))
+                                    },
+                                });
+
+                                return variable_value;
+                            }
+                            _ => {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                    "Unprocessible entity",
+                                ))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                            }
+                        }
+                    }
+
                     _ => {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(
                             "Unprocessible entity",
