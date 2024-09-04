@@ -208,6 +208,12 @@ struct VariantValue {
 }
 
 #[derive(Debug)]
+struct PayableValue {
+    pub value: Box<VariableValue>,
+    pub then: Option<Box<VariableValue>>,
+}
+
+#[derive(Debug)]
 enum VariableValue {
     StringValue(StringValue),
     ArrayValue(ArrayValue),
@@ -221,6 +227,7 @@ enum VariableValue {
     // StructValue(StructValue),
     ExpressionValue(ExpressionValue),
     KeywordValue(KeywordValue),
+    PayableValue(PayableValue),
     // StructOrFunctionValue(FunctionValue),
     // LibOrStructOrEnumValue(VariantValue),
     // MappingValue(VariantValue),
@@ -921,6 +928,16 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 ))),
                 then: nested,
             });
+            return variable_value;
+        }
+        Token::Payable => {
+            let (cast_value, nested) = process_type_cast(raw_value, line);
+            let payable_value = process_variable_value(cast_value.to_vec(), line);
+            let variable_value = VariableValue::PayableValue(PayableValue {
+                value: Box::new(payable_value),
+                then: nested,
+            });
+
             return variable_value;
         }
 

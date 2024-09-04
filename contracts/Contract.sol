@@ -3,7 +3,7 @@ pragma solidity ^0.8.24;
 
 library Name {
 
-    address yo = payable(address(this.balance));
+    address yo = address(msg.sender);
 
     
     address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
