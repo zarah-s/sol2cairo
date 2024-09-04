@@ -140,6 +140,12 @@ struct IdentifierValue {
     pub value: String,
     pub then: Option<Box<VariableValue>>,
 }
+
+#[derive(Debug)]
+struct KeywordValue {
+    pub value: Token,
+    pub then: Option<Box<VariableValue>>,
+}
 #[derive(Debug)]
 
 struct FunctionPTRInvocation {
@@ -202,6 +208,12 @@ struct VariantValue {
 }
 
 #[derive(Debug)]
+struct PayableValue {
+    pub value: Box<VariableValue>,
+    pub then: Option<Box<VariableValue>>,
+}
+
+#[derive(Debug)]
 enum VariableValue {
     StringValue(StringValue),
     ArrayValue(ArrayValue),
@@ -214,6 +226,9 @@ enum VariableValue {
     FunctionPTRInvocation(FunctionPTRInvocation),
     // StructValue(StructValue),
     ExpressionValue(ExpressionValue),
+    KeywordValue(KeywordValue),
+    PayableValue(PayableValue),
+    UnitValue(String, Token),
     // StructOrFunctionValue(FunctionValue),
     // LibOrStructOrEnumValue(VariantValue),
     // MappingValue(VariantValue),
@@ -759,12 +774,40 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 });
                 return variable_value;
             } else if _identifier.tokenize().is_integer_literal() {
-                if raw_value.strip_spaces().len() != 1 {
-                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                        "Cannot call method on literal {}",
-                        raw_value.to_string()
-                    )))
-                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                if raw_value.strip_spaces().len() > 1 {
+                    if raw_value.strip_spaces().len() != 2 {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "Unprocessible entity for {}",
+                            raw_value.to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    } else {
+                        match raw_value.strip_spaces()[1] {
+                            Token::Seconds
+                            | Token::Minutes
+                            | Token::Hours
+                            | Token::Days
+                            | Token::Weeks
+                            | Token::Years
+                            | Token::Wei
+                            | Token::Gwei
+                            | Token::Szabo
+                            | Token::Finney
+                            | Token::Ether => {
+                                let variable_value = VariableValue::UnitValue(
+                                    _identifier.to_owned(),
+                                    raw_value.strip_spaces()[1].to_owned(),
+                                );
+                                return variable_value;
+                            }
+                            _ => {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                    "Unprocessible entity",
+                                ))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                            }
+                        }
+                    }
                 }
                 let variable_value = VariableValue::IntegerValue(IntegerValue {
                     value: IntegerVariable::Literal(_identifier.to_owned()),
@@ -881,6 +924,29 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             return variable_value;
         }
 
+        Token::This | Token::Msg | Token::Block | Token::Tx => {
+            let stripped_spaces = raw_value.strip_spaces();
+            if stripped_spaces.len() == 1 {
+                let variable_value = VariableValue::KeywordValue(KeywordValue {
+                    value: stripped_spaces[0].to_owned(),
+                    then: None,
+                });
+                return variable_value;
+            } else {
+                if let Token::Dot = stripped_spaces[1] {
+                    let nest = process_variable_value(stripped_spaces[2..].to_vec(), line);
+
+                    let variable_value = VariableValue::KeywordValue(KeywordValue {
+                        value: stripped_spaces[0].to_owned(),
+                        then: Some(Box::new(nest)),
+                    });
+                    return variable_value;
+                } else {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                }
+            }
+        }
         Token::Bool => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
@@ -891,6 +957,16 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 ))),
                 then: nested,
             });
+            return variable_value;
+        }
+        Token::Payable => {
+            let (cast_value, nested) = process_type_cast(raw_value, line);
+            let payable_value = process_variable_value(cast_value.to_vec(), line);
+            let variable_value = VariableValue::PayableValue(PayableValue {
+                value: Box::new(payable_value),
+                then: nested,
+            });
+
             return variable_value;
         }
 
@@ -1299,13 +1375,6 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             }
         }
         Token::OpenParenthesis => {
-            if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
-                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                    "Expecting ) but got {}",
-                    raw_value.strip_spaces().last().unwrap().to_string()
-                )))
-                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
-            }
             let mut open_paren = 1;
             let mut close_index = 0;
 
@@ -1326,7 +1395,15 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             }
             let cast_value = &raw_value.strip_spaces()[1..close_index];
             let mut nest = VariableValue::None;
-            process_nested_methods(&raw_value.to_vec(), close_index, &mut nest, line);
+            if raw_value.strip_spaces().get(close_index + 1).is_some() {
+                nest = process_method_data_with_possible_fn_ptr_invocation(
+                    || {},
+                    &raw_value,
+                    close_index,
+                    line,
+                    &raw_value.strip_spaces()[close_index + 1..],
+                );
+            }
             let variable_value = process_variable_value(cast_value.to_vec(), line);
             return VariableValue::Context {
                 value: Box::new(variable_value),
@@ -1350,6 +1427,12 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
 
 fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Box<VariableValue>>) {
     /* VALIDATION CHECKS */
+
+    if raw_value.strip_spaces().len() < 2 {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible Entity"))
+            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+    }
+
     if raw_value.strip_spaces()[1] != Token::OpenParenthesis {
         CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
             "Expecting ( but got {}",
@@ -1384,7 +1467,15 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
     }
     let mut nest: VariableValue = VariableValue::None;
-    process_nested_methods(&raw_value, close_index, &mut nest, line);
+    if raw_value.strip_spaces().get(close_index + 1).is_some() {
+        nest = process_method_data_with_possible_fn_ptr_invocation(
+            || {},
+            &raw_value,
+            close_index,
+            line,
+            &raw_value.strip_spaces()[close_index + 1..],
+        );
+    }
     let cast_value = &raw_value.strip_spaces()[2..close_index];
     (
         cast_value.to_vec(),
@@ -1394,72 +1485,6 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
             Some(Box::new(nest))
         },
     )
-}
-
-fn process_nested_methods(
-    raw_value: &Vec<Token>,
-    close_index: usize,
-    nest: &mut VariableValue,
-    line: i32,
-) {
-    if raw_value.strip_spaces().get(close_index + 1).is_some() {
-        match raw_value.strip_spaces()[close_index + 1] {
-            Token::Dot => {
-                let methods_slice = &raw_value.strip_spaces()[close_index + 1..];
-                process_raw_methods(methods_slice, line, nest);
-            }
-            // Token::CloseParenthesis => {}
-            _ => {
-                panic!("Unexpected panic in variable.rs for process_type_cast")
-            }
-        }
-    }
-}
-
-fn process_raw_methods(methods_slice: &[Token], line: i32, nest: &mut VariableValue) {
-    let mut methods = Vec::new();
-    let mut nest_open_paren = 0;
-    let mut combined = Vec::new();
-    for tkn in methods_slice {
-        combined.push(tkn.to_owned());
-        match tkn {
-            Token::OpenParenthesis => {
-                nest_open_paren += 1;
-            }
-            Token::CloseParenthesis => {
-                nest_open_paren -= 1;
-                if nest_open_paren == 0 {
-                    methods.push(combined.to_owned());
-                    combined.clear();
-                }
-            }
-            _ => {}
-        }
-    }
-    if nest_open_paren != 0 {
-        CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
-            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-    }
-    if methods.is_empty() {
-        CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
-            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-    } else {
-        for method in methods {
-            if method.is_empty() {
-                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unexpected ."))
-                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-            } else {
-                match method[0] {
-                    Token::Dot => {
-                        nest.add_method(process_variable_value(method[1..].to_vec(), line))
-                    }
-                    _ => {
-                        panic!("NOT A METHOD FOR PROCESS TYPE_CAST IN VARIABLE.RS")
-                    }
-                }
-            }
-        }
-    }
 }
 
 fn process_args(raw_value: &Vec<Token>, raw_args: &[Token], line: i32) -> Vec<ArgumentType> {

@@ -3,7 +3,10 @@ pragma solidity ^0.8.24;
 
 library Name {
 
-    address yo = jane[1]()(1)();
+    uint oi = (1 days).count();
+
+    address yo = address(msg.sender);
+
     
     address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
      bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
