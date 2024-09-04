@@ -140,6 +140,12 @@ struct IdentifierValue {
     pub value: String,
     pub then: Option<Box<VariableValue>>,
 }
+
+#[derive(Debug)]
+struct KeywordValue {
+    pub value: Token,
+    pub then: Option<Box<VariableValue>>,
+}
 #[derive(Debug)]
 
 struct FunctionPTRInvocation {
@@ -214,6 +220,7 @@ enum VariableValue {
     FunctionPTRInvocation(FunctionPTRInvocation),
     // StructValue(StructValue),
     ExpressionValue(ExpressionValue),
+    KeywordValue(KeywordValue),
     // StructOrFunctionValue(FunctionValue),
     // LibOrStructOrEnumValue(VariantValue),
     // MappingValue(VariantValue),
@@ -881,6 +888,29 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             return variable_value;
         }
 
+        Token::This | Token::Msg | Token::Block | Token::Tx => {
+            let stripped_spaces = raw_value.strip_spaces();
+            if stripped_spaces.len() == 1 {
+                let variable_value = VariableValue::KeywordValue(KeywordValue {
+                    value: stripped_spaces[0].to_owned(),
+                    then: None,
+                });
+                return variable_value;
+            } else {
+                if let Token::Dot = stripped_spaces[1] {
+                    let nest = process_variable_value(stripped_spaces[2..].to_vec(), line);
+
+                    let variable_value = VariableValue::KeywordValue(KeywordValue {
+                        value: stripped_spaces[0].to_owned(),
+                        then: Some(Box::new(nest)),
+                    });
+                    return variable_value;
+                } else {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                }
+            }
+        }
         Token::Bool => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
@@ -1350,6 +1380,12 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
 
 fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Box<VariableValue>>) {
     /* VALIDATION CHECKS */
+
+    if raw_value.strip_spaces().len() < 2 {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible Entity"))
+            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+    }
+
     if raw_value.strip_spaces()[1] != Token::OpenParenthesis {
         CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
             "Expecting ( but got {}",

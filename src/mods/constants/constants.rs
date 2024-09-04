@@ -1,10 +1,11 @@
 pub const DATA_TYPES: [&str; 6] = ["bytes", "uint", "int", "address", "string", "bool"];
 
-pub const KEYWORDS: [&str; 66] = [
+pub const KEYWORDS: [&str; 67] = [
     "contract",
     "mapping",
     "solidity",
     "hex",
+    "this",
     "payable",
     "using",
     "library",
