@@ -1,6 +1,6 @@
 pub const DATA_TYPES: [&str; 6] = ["bytes", "uint", "int", "address", "string", "bool"];
 
-pub const KEYWORDS: [&str; 67] = [
+pub const KEYWORDS: [&str; 72] = [
     "contract",
     "mapping",
     "solidity",
@@ -15,12 +15,17 @@ pub const KEYWORDS: [&str; 67] = [
     "delegatecall",
     "wei",
     "gwei",
+    "szabo",
+    "finney",
+    "ether",
+    "seconds",
+    "minutes",
+    "hours",
     "days",
     "weeks",
     "years",
     "emit",
     "event",
-    "ether",
     "error",
     "push",
     "pop",

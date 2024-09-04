@@ -3,6 +3,8 @@ pragma solidity ^0.8.24;
 
 library Name {
 
+    uint oi = (1 days).count();
+
     address yo = address(msg.sender);
 
     
