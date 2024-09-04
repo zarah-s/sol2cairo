@@ -1375,33 +1375,33 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             }
         }
         Token::OpenParenthesis => {
-            let mut open_paren = 1;
-            let mut close_index = 0;
+            let mut open_context = 1;
+            let mut iteration = 0;
 
             for tkn in &raw_value.strip_spaces()[1..] {
                 match tkn {
-                    Token::OpenParenthesis => open_paren += 1,
-                    Token::CloseParenthesis => open_paren -= 1,
+                    Token::OpenParenthesis => open_context += 1,
+                    Token::CloseParenthesis => open_context -= 1,
                     _ => {}
                 }
-                close_index += 1;
-                if open_paren == 0 {
+                iteration += 1;
+                if open_context == 0 {
                     break;
                 }
             }
-            if open_paren != 0 {
+            if open_context != 0 {
                 CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
-            let cast_value = &raw_value.strip_spaces()[1..close_index];
+            let cast_value = &raw_value.strip_spaces()[1..iteration];
             let mut nest = VariableValue::None;
-            if raw_value.strip_spaces().get(close_index + 1).is_some() {
+            if raw_value.strip_spaces().get(iteration + 1).is_some() {
                 nest = process_method_data_with_possible_fn_ptr_invocation(
                     || {},
                     &raw_value,
-                    close_index,
+                    iteration,
                     line,
-                    &raw_value.strip_spaces()[close_index + 1..],
+                    &raw_value.strip_spaces()[iteration + 1..],
                 );
             }
             let variable_value = process_variable_value(cast_value.to_vec(), line);
