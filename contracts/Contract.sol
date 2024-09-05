@@ -2,8 +2,11 @@
 pragma solidity ^0.8.24;
 
 library Name {
+        uint oi = [[],[]];
+        bytes public buffer = new bytes(2);
 
-    uint oi = (1 days).count();
+
+    uint oi = (1 days).count(payable(address(jane)));
 
     address yo = address(msg.sender);
 
