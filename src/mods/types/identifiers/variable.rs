@@ -86,10 +86,27 @@ struct BooleanValue {
 }
 #[derive(Debug)]
 
-enum ExpressionValue {
-    Ternary(String),
-    Math(String),
+enum ExpressionTypes {
+    Increment,
+    Decrement,
+    Add,
+    Sub,
+    Mul,
+    Div,
 }
+#[derive(Debug)]
+
+struct ExpressionVariable {
+    pub r#type: ExpressionTypes,
+    pub operand: Box<VariableValue>,
+}
+
+#[derive(Debug)]
+struct ExpressionValue {
+    pub value: ExpressionVariable,
+    pub then: Option<Box<VariableValue>>,
+}
+
 #[derive(Debug)]
 
 enum FunctionValueType {
@@ -773,51 +790,56 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     then: Some(Box::new(nest)),
                 });
                 return variable_value;
-            } else if _identifier.tokenize().is_integer_literal() {
-                if raw_value.strip_spaces().len() > 1 {
-                    if raw_value.strip_spaces().len() != 2 {
-                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                            "Unprocessible entity for {}",
-                            raw_value.to_string()
-                        )))
-                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                    } else {
-                        match raw_value.strip_spaces()[1] {
-                            Token::Seconds
-                            | Token::Minutes
-                            | Token::Hours
-                            | Token::Days
-                            | Token::Weeks
-                            | Token::Years
-                            | Token::Wei
-                            | Token::Gwei
-                            | Token::Szabo
-                            | Token::Finney
-                            | Token::Ether => {
-                                let variable_value = VariableValue::UnitValue(
-                                    _identifier.to_owned(),
-                                    raw_value.strip_spaces()[1].to_owned(),
-                                );
-                                return variable_value;
-                            }
-                            _ => {
-                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                    "Unprocessible entity",
-                                ))
-                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                            }
+            } else if raw_value.strip_spaces().len() > 1 {
+                if _identifier.tokenize().is_integer_literal()
+                    && raw_value.strip_spaces().len() == 2
+                {
+                    match raw_value.strip_spaces()[1] {
+                        Token::Seconds
+                        | Token::Minutes
+                        | Token::Hours
+                        | Token::Days
+                        | Token::Weeks
+                        | Token::Years
+                        | Token::Wei
+                        | Token::Gwei
+                        | Token::Szabo
+                        | Token::Finney
+                        | Token::Ether => {
+                            let variable_value = VariableValue::UnitValue(
+                                _identifier.to_owned(),
+                                raw_value.strip_spaces()[1].to_owned(),
+                            );
+                            return variable_value;
+                        }
+
+                        _ => {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "Unprocessible entity",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                         }
                     }
+                } else {
+                    let variable_value = VariableValue::IdentifierValue(IdentifierValue {
+                        value: _identifier.to_string(),
+                        then: Some(Box::new(process_variable_value(
+                            raw_value.strip_spaces()[1..].to_vec(),
+                            line,
+                        ))),
+                    });
+
+                    return variable_value;
                 }
-                let variable_value = VariableValue::IntegerValue(IntegerValue {
-                    value: IntegerVariable::Literal(_identifier.to_owned()),
-                    then: None,
-                });
-                return variable_value;
             } else {
                 CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
+        }
+
+        Token::Plus | Token::Minus | Token::Multiply | Token::Divide => {
+            let operation = &raw_value.strip_spaces()[0];
+            return process_math_operation(&raw_value, line, operation);
         }
 
         Token::OpenSquareBracket => {
@@ -1339,7 +1361,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 },
             };
         }
-        _ => {
+        _other => {
             CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                 "Unprocessible entity. {}",
                 raw_value.to_string()
@@ -1366,13 +1388,6 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
     }
 
-    if *raw_value.strip_spaces().last().unwrap() != Token::CloseParenthesis {
-        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-            "Expecting ) but got {}",
-            raw_value.strip_spaces().last().unwrap().to_string()
-        )))
-        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
-    }
     let mut open_paren = 1;
     let mut close_index = 1;
 
@@ -1517,7 +1532,9 @@ fn process_args(raw_value: &Vec<Token>, raw_args: &[Token], line: i32) -> Vec<Ar
 
                 if split.to_vec().strip_spaces().first().unwrap().is_symbol() {
                     match split.to_vec().strip_spaces().first().unwrap() {
-                        Token::Plus | Token::Minus | Token::OpenParenthesis => {}
+                        Token::Plus | Token::Minus | Token::OpenParenthesis => {
+                            // TODO: NOTHING
+                        }
                         _ => {
                             CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                                 "Unprocessible entity {}",
@@ -1625,6 +1642,9 @@ fn process_method_data_with_possible_fn_ptr_invocation(
                     },
                 });
             }
+        }
+        Token::Plus | Token::Minus | Token::Multiply | Token::Divide => {
+            nested = process_math_operation(&method_data.to_vec(), line, &method_data[0]);
         }
         _ => {
             CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
@@ -1737,6 +1757,67 @@ fn process_contract_like_instance(
             } else {
                 Some(Box::new(nested))
             },
+        });
+
+        return variable_value;
+    }
+}
+
+fn process_math_operation(raw_value: &Vec<Token>, line: i32, operation: &Token) -> VariableValue {
+    let stripped_value = raw_value.strip_spaces();
+    let operands = &stripped_value[1..];
+    if operands.is_empty() {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing operands"))
+            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+    }
+
+    if operands.len() == 1 && operands[0] == *operation {
+        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+            value: ExpressionVariable {
+                r#type: match operation {
+                    Token::Plus => ExpressionTypes::Increment,
+                    Token::Minus => ExpressionTypes::Decrement,
+                    _ => {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "Unprocessible entity for {}",
+                            operation.to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        unreachable!()
+                    }
+                },
+                operand: Box::new(VariableValue::None),
+            },
+            then: None,
+        });
+        return variable_value;
+    } else {
+        if operands[0] == *operation {
+            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                "Unprocessible entity for {}",
+                raw_value.to_string()
+            )))
+            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+        }
+        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+            value: ExpressionVariable {
+                r#type: match operation {
+                    Token::Plus => ExpressionTypes::Add,
+                    Token::Minus => ExpressionTypes::Sub,
+                    Token::Multiply => ExpressionTypes::Mul,
+                    Token::Divide => ExpressionTypes::Div,
+                    _ => {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "Unprocessible entity for {}",
+                            operation.to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        unreachable!()
+                    }
+                },
+                operand: Box::new(process_variable_value(stripped_value[1..].to_vec(), line)),
+            },
+            then: None,
         });
 
         return variable_value;
