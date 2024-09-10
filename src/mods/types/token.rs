@@ -126,6 +126,12 @@ pub enum Mutability {
     None,
 }
 
+pub enum DataLocation {
+    Storage,
+    Memory,
+    Calldata,
+}
+
 impl Mutability {
     pub fn get_mutability_from_token(token: &Token) -> Self {
         match token {

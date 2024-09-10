@@ -1,7 +1,10 @@
 use crate::mods::{
-    functions::helpers::global::{extract_data_type_from_token, process_size, process_type},
+    constants::constants::FILE_PATH,
+    functions::helpers::global::{
+        extract_data_type_from_token, get_env_vars, process_size, process_type, validate_identifier,
+    },
     types::{
-        compiler_errors::ErrType,
+        compiler_errors::{CompilerError, ErrType, SyntaxError},
         token::{TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
@@ -333,6 +336,13 @@ pub fn process_mapping(
                 } else if let MappingState::CloseParenthesisIdentifier = state {
                     if nested_count == 0 {
                         if let Token::Identifier(identifier) = n {
+                            validate_identifier(&identifier).unwrap_or_else(|err| {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                    "{} for mapping",
+                                    err
+                                )))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), 0);
+                            });
                             mapping_header.identifier = identifier.to_string();
                         } else {
                             return Err((

@@ -129,8 +129,8 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _errs = parse_custom_errors(errors);
         let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
-        parse_variables(vars);
-
+        let ret = parse_variables(vars);
+        println!("{:#?}", ret);
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
         //     structs, vars, enums, functions, errors, lib_implementations, lib_header
@@ -651,6 +651,7 @@ fn seperate_variant_variants(
     let mut tokens: Vec<Token> = Vec::new();
     let mut combined: Vec<LineDescriptions<Vec<Token>>> = Vec::new();
 
+    // let mut is_mapping = false;
     for (parent_index, _line_desc) in line_desc.iter().enumerate() {
         for (index, token) in _line_desc.data.iter().enumerate() {
             tokens.push(token.clone());
@@ -734,15 +735,42 @@ fn seperate_variant_variants(
                     }
                 }
                 Token::Mapping => {
-                    if opened_braces_count == 1 {
-                        if parent_index > 0 {
-                            validate_clash(
-                                terminator_type,
-                                &tokens,
-                                &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
-                                Some(opened_braces_count),
-                            )
+                    if let TerminationTypeContext::None = terminator_type {
+                        //TODO: NOTHING
+                    } else {
+                        if index > 0 {
+                            let mut space_count = 0;
+                            for c in &_line_desc.data[..index] {
+                                match c {
+                                    Token::Space => space_count += 1,
+                                    _ => {}
+                                }
+                            }
+                            let _raw = _line_desc.data.strip_spaces();
+                            let find = _raw.get(index - (1 + space_count));
+                            if let Some(_tkn) = find {
+                                match _tkn {
+                                    Token::Gt => (),
+                                    _ => {
+                                        CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
+                                            .throw_with_file_info(
+                                                &std::env::var(FILE_PATH).unwrap(),
+                                                _line_desc.line,
+                                            );
+                                    }
+                                }
+                            }
+                        } else {
+                            if parent_index > 0 && opened_braces_count == 1 {
+                                CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        line_desc.get(parent_index - 1).unwrap().line,
+                                    );
+                            }
                         }
+                    }
+                    if opened_braces_count == 1 {
                         terminator_type = TerminationTypeContext::Variable
                     }
                 }
@@ -760,6 +788,7 @@ fn seperate_variant_variants(
                 }
 
                 Token::SemiColon => {
+                    // is_mapping = false;
                     if opened_braces_count == 1 {
                         if !tokens.is_empty() {
                             combined.push(LineDescriptions {
@@ -781,6 +810,11 @@ fn seperate_variant_variants(
 
                             TerminationTypeContext::Error => {
                                 errors.push(combined.clone());
+                                combined.clear();
+                            }
+
+                            TerminationTypeContext::Function => {
+                                vars.push(combined.clone());
                                 combined.clear();
                             }
                             TerminationTypeContext::Event => {
