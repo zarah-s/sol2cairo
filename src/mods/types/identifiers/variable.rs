@@ -89,6 +89,7 @@ struct BooleanValue {
 enum ExpressionTypes {
     Increment,
     Decrement,
+    Eq,
     TernaryIf,
     TernaryEl,
     Add,
@@ -981,17 +982,9 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             });
 
             return variable_value;
-            // panic!("sdfsd {:?}",);
         }
 
-        Token::True => {
-            // if raw_value.strip_spaces().len() > 1 {
-            // CompilerError::SyntaxError(SyntaxError::SyntaxError(
-            //     "Cannot have method on boolean",
-            // ))
-            // .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-            // }
-
+        Token::True | Token::False => {
             let mut nest: Option<Box<VariableValue>> = None;
 
             if raw_value.strip_spaces().len() > 1 {
@@ -1011,11 +1004,33 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             }
 
             let variable_value = VariableValue::BooleanValue(BooleanValue {
-                value: BooleanVariable::Literal(Token::True.to_string()),
+                value: BooleanVariable::Literal(raw_value.strip_spaces()[0].to_string()),
                 then: nest,
             });
 
             return variable_value;
+        }
+
+        Token::Equals => {
+            let stripped = raw_value.strip_spaces();
+            if stripped.len() < 3 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+            if stripped[0] == Token::Equals && stripped[1] == Token::Equals {
+                let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                    value: ExpressionVariable {
+                        r#type: ExpressionTypes::Eq,
+                        operand: Box::new(process_variable_value(stripped[2..].to_vec(), line)),
+                    },
+                    then: None,
+                });
+
+                return variable_value;
+            } else {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
         }
 
         Token::This | Token::Msg | Token::Block | Token::Tx => {

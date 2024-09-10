@@ -2,7 +2,8 @@
 pragma solidity ^0.8.24;
 
 library Name {
-        uint oi = 1==1;
+        // uint oi = 1==hh.io? false:true;
+        // mapping (address => uint) name;
 //         bytes public buffer = new bytes(2);
 
 
