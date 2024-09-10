@@ -75,9 +75,9 @@ pub const KEYWORDS: [&str; 72] = [
     "false",
 ];
 
-pub const SYMBOLS: [char; 25] = [
+pub const SYMBOLS: [char; 26] = [
     '+', '-', '/', '*', '(', ')', '[', ']', '{', '}', '>', '<', '.', '=', '!', '%', ';', '\'', '"',
-    ',', '|', '&', '~', '^', ':',
+    ',', '|', '&', '~', '^', ':', '?',
 ];
 
 pub const INTEGER_SIZES: [u16; 32] = [

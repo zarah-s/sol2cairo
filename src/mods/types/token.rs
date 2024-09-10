@@ -11,6 +11,7 @@ pub enum Token {
     Tx,
     This,
     Hex,
+    QMark,
     Colon,
     Abstract,
     Emit,
@@ -448,6 +449,7 @@ fn detokenize(input: &Token) -> String {
     match input {
         Token::Contract => "contract".to_string(),
         Token::Emit => "emit".to_string(),
+        Token::QMark => "?".to_string(),
         Token::Block => "block".to_string(),
         Token::Tx => "tx".to_string(),
         Token::This => "this".to_string(),
@@ -577,6 +579,7 @@ fn tokenize(input: &str) -> Token {
         "revert" => Token::Revert,
         " " | "" => Token::Space,
         "emit" => Token::Emit,
+        "?" => Token::QMark,
         ":" => Token::Colon,
         "pragma" => Token::Pragma,
         "tx" => Token::Tx,

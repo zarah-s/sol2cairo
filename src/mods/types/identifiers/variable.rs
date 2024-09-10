@@ -89,6 +89,8 @@ struct BooleanValue {
 enum ExpressionTypes {
     Increment,
     Decrement,
+    TernaryIf,
+    TernaryEl,
     Add,
     Sub,
     Mul,
@@ -931,16 +933,86 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             return variable_value;
         }
 
-        Token::True => {
-            if raw_value.strip_spaces().len() > 1 {
+        Token::QMark => {
+            let mut open_context = 1;
+            let mut iteration = 0;
+
+            for tkn in &raw_value.strip_spaces()[1..] {
+                match tkn {
+                    Token::QMark => open_context += 1,
+                    Token::Colon => open_context -= 1,
+                    _ => {}
+                }
+                iteration += 1;
+                if open_context == 0 {
+                    break;
+                }
+            }
+            if open_context != 0 {
                 CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                    "Cannot have method on boolean",
+                    "Missing else statement for ternary operator",
                 ))
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
+
+            let else_block = &raw_value.strip_spaces()[iteration + 1..];
+            if else_block.is_empty() {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    "Missing else statement for ternary operator",
+                ))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                value: ExpressionVariable {
+                    r#type: ExpressionTypes::TernaryIf,
+                    operand: Box::new(process_variable_value(
+                        raw_value.strip_spaces()[1..iteration].to_vec(),
+                        line,
+                    )),
+                },
+                then: Some(Box::new(VariableValue::ExpressionValue(ExpressionValue {
+                    value: ExpressionVariable {
+                        r#type: ExpressionTypes::TernaryEl,
+                        operand: Box::new(process_variable_value(else_block.to_vec(), line)),
+                    },
+                    then: None,
+                }))),
+            });
+
+            return variable_value;
+            // panic!("sdfsd {:?}",);
+        }
+
+        Token::True => {
+            // if raw_value.strip_spaces().len() > 1 {
+            // CompilerError::SyntaxError(SyntaxError::SyntaxError(
+            //     "Cannot have method on boolean",
+            // ))
+            // .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            // }
+
+            let mut nest: Option<Box<VariableValue>> = None;
+
+            if raw_value.strip_spaces().len() > 1 {
+                match raw_value.strip_spaces()[1] {
+                    Token::QMark | Token::Equals => (),
+                    _ => {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                            "Unprocessible entity for boolean type",
+                        ))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    }
+                }
+                nest = Some(Box::new(process_variable_value(
+                    raw_value.strip_spaces()[1..].to_vec(),
+                    line,
+                )));
+            }
+
             let variable_value = VariableValue::BooleanValue(BooleanValue {
                 value: BooleanVariable::Literal(Token::True.to_string()),
-                then: None,
+                then: nest,
             });
 
             return variable_value;

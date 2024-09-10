@@ -2,7 +2,7 @@
 pragma solidity ^0.8.24;
 
 library Name {
-        uint oi =1+2+3+(y+h)+uint(2)/2;
+        uint oi = 1==1;
 //         bytes public buffer = new bytes(2);
 
 
