@@ -26,7 +26,7 @@ bytes hexs = hex"adfadfad";
 // event Transfer(uind.asd[(((100)))] indexed,address indexed);
 sd[2000_000] yo = new Toes[]((2000_000).add()).com();
  Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
- function() internal  view returns(address) selectedFunction;
+//  function() internal  view returns(address) selectedFunction;
     uint sdf = uint8(wed).to_bts().add();
 
     function oi() {
@@ -47,7 +47,9 @@ sd[2000_000] yo = new Toes[]((2000_000).add()).com();
     }
 
      struct Layout {
+        ads.o[] sdff;
         address[(100**10)] owner;
+        address payable[2] dd;
         uint256 collection_count;
         mapping(uint256 => Types.Collection) collection_by_id;
         mapping(string => Types.Collection) collection_by_name;

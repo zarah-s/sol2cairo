@@ -5,7 +5,7 @@ use crate::mods::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         identifiers::mapping::{process_mapping, Mapping},
         line_descriptors::LineDescriptions,
-        token::{TTokenTrait, TVecExtension, Token, Visibility},
+        token::{TStringExtension, TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
 
@@ -40,6 +40,7 @@ pub struct Variant {
     pub name: String,
     pub array_size: Option<String>,
     pub is_array: bool,
+    pub payable: bool,
 }
 
 impl Variant {
@@ -49,6 +50,7 @@ impl Variant {
             name: String::new(),
             array_size: None,
             is_array: false,
+            payable: false,
         }
     }
 }
@@ -281,57 +283,149 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
             return Ok(variant_construct);
         }
         _other => {
+            // println!("{:?}", _other);
             return Err((
                 format!("Invalid variant declaration \"{}\"", combined.to_string()),
                 ErrType::Syntax,
-            ))
+            ));
         }
     }
 }
 
+enum Stage {
+    TypeDeclaration,
+    Name,
+    Dot,
+    None,
+}
 fn process_non_mapping_variant(
     combined: &Vec<Token>,
     variant: &mut Variant,
 ) -> Result<(), (String, ErrType)> {
     let mut is_array = false;
+    let mut payable = false;
     let mut r#type = String::new();
     let mut size: Option<String> = None;
     let mut name = String::new();
-    let open_bracket_index = combined
-        .iter()
-        .position(|pred| *pred == Token::OpenSquareBracket);
+    let mut stage = Stage::None;
+    let stripped_spaces = combined.strip_spaces();
+    for (index, tkn) in stripped_spaces.iter().enumerate() {
+        match tkn {
+            Token::Identifier(_identifier) => match stage {
+                Stage::None | Stage::Dot => {
+                    r#type.push_str(&tkn.to_string());
+                    stage = Stage::TypeDeclaration;
+                }
 
-    if let Some(_bracket_index) = open_bracket_index {
-        /* PROCESS TYPE */
-        let backward_slice = &combined[.._bracket_index];
-        process_type(backward_slice, &mut r#type, combined)?;
-        is_array = true;
-        /* PROCESS ARRAY SIZE */
-        let close_bracket_index = &combined[_bracket_index + 1..]
-            .iter()
-            .position(|pred| *pred == Token::CloseSquareBracket);
-        if let Some(_close_bracket_index) = close_bracket_index {
-            size = process_size(combined, _bracket_index, *_close_bracket_index)?;
-        } else {
-            return Err((format!("] \"{}\"", combined.to_string()), ErrType::Missing));
-        }
+                Stage::TypeDeclaration => {
+                    name.push_str(&_identifier);
+                    stage = Stage::Name;
+                }
+                _ => {
+                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                }
+            },
 
-        /* PROCESS NAME */
-        let name_definition = &combined[_bracket_index + 1..][close_bracket_index.unwrap() + 1..]
-            .to_vec()
-            .strip_spaces();
+            Token::SemiColon => match stage {
+                Stage::Name => {}
+                _ => {
+                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                }
+            },
 
-        process_name(name_definition, &mut name, combined)?;
-    } else {
-        if let Token::Dot = combined.strip_spaces()[1] {
-            let slice = &combined[..3];
-            process_type(slice, &mut r#type, combined)?;
-            let name_definition = &combined[3..].to_vec().strip_spaces();
-            process_name(name_definition, &mut name, combined)?;
-        } else {
-            process_type(&combined[..1], &mut r#type, combined)?;
-            let name_definition = &combined[1..].to_vec().strip_spaces();
-            process_name(name_definition, &mut name, combined)?;
+            Token::Uint(_)
+            | Token::Int(_)
+            | Token::Bool
+            | Token::Bytes(_)
+            | Token::Address
+            | Token::String => {
+                if let Stage::None = stage {
+                    r#type.push_str(&tkn.to_string());
+                    stage = Stage::TypeDeclaration;
+                } else {
+                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                }
+            }
+            Token::Dot => {
+                if let Stage::TypeDeclaration = stage {
+                    r#type.push_str(&tkn.to_string());
+                    stage = Stage::Dot;
+                } else {
+                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                }
+            }
+
+            Token::OpenSquareBracket => {
+                if let Stage::TypeDeclaration = stage {
+                    is_array = true;
+                    let mut open_contex = 0;
+                    let mut iteration = 0;
+                    for _strip in &stripped_spaces[index..] {
+                        match _strip {
+                            Token::OpenSquareBracket => {
+                                open_contex += 1;
+                            }
+                            Token::CloseSquareBracket => {
+                                open_contex -= 1;
+                                if open_contex == 0 {
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+                        iteration += 1;
+                    }
+
+                    let raw_size = &stripped_spaces[index + 1..index + iteration];
+                    if !raw_size.is_empty() {
+                        size = Some(raw_size.to_vec().to_string());
+                    }
+                    if stripped_spaces.len() < index + iteration + 1 {
+                        return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                    }
+                    let raw_name = &stripped_spaces[index + iteration + 1..];
+                    if raw_name.len() != 2 {
+                        return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                    } else {
+                        if let Token::Identifier(_name) = &raw_name[0] {
+                            validate_identifier(_name).unwrap();
+                            name = _name.to_string()
+                        } else {
+                            return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                        }
+
+                        if raw_name[1] != Token::SemiColon {
+                            return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                        }
+                    }
+
+                    if open_contex != 0 {
+                        return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                    }
+
+                    break;
+                } else {
+                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                }
+            }
+
+            Token::Payable => {
+                if let Stage::TypeDeclaration = stage {
+                    if let Token::Address = r#type.tokenize() {
+                        payable = true;
+                    } else {
+                        return Err((
+                            "Cannot declare payable for non-address type".to_string(),
+                            ErrType::Syntax,
+                        ));
+                    }
+                } else {
+                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                }
+            }
+            _ => {
+                return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+            }
         }
     }
 
@@ -340,6 +434,7 @@ fn process_non_mapping_variant(
         name,
         array_size: size,
         r#type,
+        payable,
     };
 
     Ok(())

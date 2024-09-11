@@ -133,8 +133,9 @@ pub fn process_name(
             return Err((format!("; \"{}\"", combined.to_string()), ErrType::Missing));
         }
     } else {
+        // println!("{:?}", name_definition);
         return Err((
-            format!("Invalid variant declaration \"{}\"", combined.to_string()),
+            format!("Invalid variantcc declaration \"{}\"", combined.to_string()),
             ErrType::Syntax,
         ));
     }

@@ -123,13 +123,13 @@ pub async fn compile_source_code(args: Vec<String>) {
             }
         }
 
-        let _ = StructIdentifier::parse_structs(structs);
+        let ret = StructIdentifier::parse_structs(structs);
         let _ = parse_enums(enums);
 
         let _errs = parse_custom_errors(errors);
         let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
-        let ret = parse_variables(vars);
+        // let ret = parse_variables(vars);
         println!("{:#?}", ret);
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
