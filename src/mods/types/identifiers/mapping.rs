@@ -341,13 +341,6 @@ pub fn process_mapping(
                                         ));
                                     }
 
-                                    // if payable {
-                                    // panic!(
-                                    //     "{:?}",
-                                    //     combined[index + 1 + 1..][..iteration].to_vec().to_string()
-                                    // );
-                                    // }
-
                                     if !combined[index + 1 + 1..][..iteration].is_empty() {
                                         size = Some(
                                             combined[index + 1 + 1..][..iteration]
@@ -358,7 +351,6 @@ pub fn process_mapping(
 
                                     pad = iteration + index + 3;
                                 } else {
-                                    // println!("{:?}", combined[index + 1]);
                                     return Err((
                                         format!(
                                             "Invalid variant declaration \"{}\"",
@@ -415,11 +407,6 @@ pub fn process_mapping(
                             payable,
                         })),
                     )?;
-
-                    // println!("{:?}", mapping);
-                    // if payable {
-                    //     panic!("{:?}", mapping)
-                    // }
                 } else if let MappingState::CloseParenthesisIdentifier = state {
                     if nested_count == 0 {
                         if let Token::Identifier(identifier) = n {
@@ -454,9 +441,7 @@ pub fn process_mapping(
             Token::Payable => {
                 if let MappingState::Value = state {
                     if let Token::Address = combined[index - 1] {
-                        // payable = true;
                         mapping.update_payable_state(true);
-                        // panic!("sdfasd")
                     } else {
                         return Err((
                             format!("Invalidd variant declaration \"{}\"", _combined.to_string()),
