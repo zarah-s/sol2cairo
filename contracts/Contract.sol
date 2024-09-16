@@ -54,7 +54,7 @@ sd[2000_000] yo = new Toes[]((2000_000).add()).com();
         mapping(sd => Types.Collection) collection_by_id;
         mapping(string => Types.Collection) collection_by_name;
         mapping(uint => mapping(uint => mapping(uint => uint))) totalSupply;
-        mapping(uint => mapping(Types.Slot => address)) accessory;
+        mapping(uint => mapping(      Types.Slot =>       address payable[]    )) accessory;
         mapping(address => mapping(uint256 => mapping(uint => Types.Token[jj[1]]))) minted;
     }
 

@@ -5,7 +5,7 @@ use crate::mods::{
     },
     types::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
-        token::{TTokenTrait, TVecExtension, Token, Visibility},
+        token::{TStringExtension, TTokenTrait, TVecExtension, Token, Visibility},
     },
 };
 
@@ -46,6 +46,7 @@ pub struct ReturnValue {
     pub r#type: String,
     pub array_size: Option<String>,
     pub is_array: bool,
+    pub payable: bool,
 }
 
 #[derive(Debug)]
@@ -113,21 +114,40 @@ impl Mapping {
 
         Ok(())
     }
+
+    pub fn update_payable_state(&mut self, payable: bool) {
+        match &mut self.value {
+            Some(_val) => match _val {
+                MappingValue::Raw(_raw) => {
+                    _raw.payable = payable;
+                }
+                MappingValue::Mapping(_map) => {
+                    _map.update_payable_state(payable);
+                }
+            },
+
+            _ => {
+                // TODO: NOTHING
+            }
+        }
+    }
 }
 
 pub fn process_mapping(
-    combined: &Vec<Token>,
+    _combined: &Vec<Token>,
     mapping: &mut Mapping,
     mapping_header: &mut MappingHeader,
 ) -> Result<(), (String, ErrType)> {
     let mut state = MappingState::None;
     let mut pad = 0;
     let mut nested_count = 0;
+    let combined = &_combined.strip_spaces();
 
     /* CONSTRUCT DATA */
     let mut is_array = false;
     let mut r#type = String::new();
     let mut size: Option<String> = None;
+    let mut payable = false;
     for (index, n) in combined.iter().enumerate() {
         if pad > index {
             continue;
@@ -142,7 +162,7 @@ pub fn process_mapping(
                     state = MappingState::OpenParenthesisIdentifier;
                 } else {
                     return Err((
-                        format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                        format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                         ErrType::Syntax,
                     ));
                 }
@@ -153,7 +173,7 @@ pub fn process_mapping(
                     state = MappingState::CloseParenthesisIdentifier;
                 } else {
                     return Err((
-                        format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                        format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                         ErrType::Syntax,
                     ));
                 }
@@ -177,7 +197,7 @@ pub fn process_mapping(
                     }
                 } else {
                     return Err((
-                        format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                        format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                         ErrType::Syntax,
                     ));
                 }
@@ -187,7 +207,7 @@ pub fn process_mapping(
                     state = MappingState::Assign;
                 } else {
                     return Err((
-                        format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                        format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                         ErrType::Syntax,
                     ));
                 }
@@ -197,7 +217,7 @@ pub fn process_mapping(
                     state = MappingState::Gt;
                 } else {
                     return Err((
-                        format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                        format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                         ErrType::Syntax,
                     ));
                 }
@@ -224,7 +244,7 @@ pub fn process_mapping(
                             )?;
                         } else {
                             return Err((
-                                format!("=> \"{}\"", combined.to_string()),
+                                format!("=> \"{}\"", _combined.to_string()),
                                 ErrType::Unexpected,
                             ));
                         }
@@ -242,6 +262,7 @@ pub fn process_mapping(
                             if combined[index..index + 4].contains(&Token::Dot) {
                                 if let Token::OpenSquareBracket = combined[index + 3] {
                                     let backward_slice = &combined[index..index + 3];
+
                                     process_type(backward_slice, &mut r#type, combined)?;
                                     let sliced = &combined[index + 4..];
 
@@ -268,22 +289,31 @@ pub fn process_mapping(
                                             ErrType::Syntax,
                                         ));
                                     }
-                                    size = Some(
-                                        combined[index + 3 + 1..][..iteration].to_vec().to_string(),
-                                    );
+                                    if !combined[index + 3 + 1..][..iteration].is_empty() {
+                                        size = Some(
+                                            combined[index + 3 + 1..][..iteration]
+                                                .to_vec()
+                                                .to_string(),
+                                        );
+                                    }
                                     pad = iteration + index + 5;
                                 } else {
                                     return Err((
                                         format!(
                                             "Invalid variant declaration \"{}\"",
-                                            combined.to_string()
+                                            _combined.to_string()
                                         ),
                                         ErrType::Syntax,
                                     ));
                                 }
                             } else {
+                                let mut index = index;
+                                let backward_slice = &combined[index..index + 1];
+                                if let Token::Payable = combined[index + 1] {
+                                    payable = true;
+                                    index += 1;
+                                }
                                 if let Token::OpenSquareBracket = combined[index + 1] {
-                                    let backward_slice = &combined[index..index + 1];
                                     process_type(backward_slice, &mut r#type, combined)?;
                                     let sliced = &combined[index + 2..];
 
@@ -310,16 +340,29 @@ pub fn process_mapping(
                                             ErrType::Syntax,
                                         ));
                                     }
-                                    size = Some(
-                                        combined[index + 1 + 1..][..iteration].to_vec().to_string(),
-                                    );
+
+                                    // if payable {
+                                    // panic!(
+                                    //     "{:?}",
+                                    //     combined[index + 1 + 1..][..iteration].to_vec().to_string()
+                                    // );
+                                    // }
+
+                                    if !combined[index + 1 + 1..][..iteration].is_empty() {
+                                        size = Some(
+                                            combined[index + 1 + 1..][..iteration]
+                                                .to_vec()
+                                                .to_string(),
+                                        );
+                                    }
 
                                     pad = iteration + index + 3;
                                 } else {
+                                    // println!("{:?}", combined[index + 1]);
                                     return Err((
                                         format!(
                                             "Invalid variant declaration \"{}\"",
-                                            combined.to_string()
+                                            _combined.to_string()
                                         ),
                                         ErrType::Syntax,
                                     ));
@@ -335,7 +378,7 @@ pub fn process_mapping(
                                     return Err((
                                         format!(
                                             "Invalid variant declaration \"{}\"",
-                                            combined.to_string()
+                                            _combined.to_string()
                                         ),
                                         ErrType::Syntax,
                                     ));
@@ -347,21 +390,36 @@ pub fn process_mapping(
                         }
                     } else {
                         return Err((
-                            format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                            format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                             ErrType::Syntax,
                         ));
                     }
 
                     state = MappingState::Value;
 
+                    if payable && r#type.tokenize() != Token::Address {
+                        return Err((
+                            format!(
+                                "Invalid payable for non-address type \"{}\"",
+                                _combined.to_string()
+                            ),
+                            ErrType::Syntax,
+                        ));
+                    }
                     mapping.insert(
                         None,
                         Some(MappingValue::Raw(ReturnValue {
                             r#type: r#type.clone(),
                             array_size: size.clone(),
                             is_array,
+                            payable,
                         })),
-                    )?
+                    )?;
+
+                    // println!("{:?}", mapping);
+                    // if payable {
+                    //     panic!("{:?}", mapping)
+                    // }
                 } else if let MappingState::CloseParenthesisIdentifier = state {
                     if nested_count == 0 {
                         if let Token::Identifier(identifier) = n {
@@ -387,7 +445,27 @@ pub fn process_mapping(
                     }
                 } else {
                     return Err((
-                        format!("Invalid ddvariant declaration \"{}\"", combined.to_string()),
+                        format!("Invalid variant declaration \"{}\"", _combined.to_string()),
+                        ErrType::Syntax,
+                    ));
+                }
+            }
+
+            Token::Payable => {
+                if let MappingState::Value = state {
+                    if let Token::Address = combined[index - 1] {
+                        // payable = true;
+                        mapping.update_payable_state(true);
+                        // panic!("sdfasd")
+                    } else {
+                        return Err((
+                            format!("Invalidd variant declaration \"{}\"", _combined.to_string()),
+                            ErrType::Syntax,
+                        ));
+                    }
+                } else {
+                    return Err((
+                        format!("Invalidd variant declaration \"{}\"", _combined.to_string()),
                         ErrType::Syntax,
                     ));
                 }
@@ -395,7 +473,7 @@ pub fn process_mapping(
             Token::Space | Token::SemiColon => {}
             _ => {
                 return Err((
-                    format!("Invalid variant declaration \"{}\"", combined.to_string()),
+                    format!("Invalidd variant declaration \"{}\"", _combined.to_string()),
                     ErrType::Syntax,
                 ))
             }
