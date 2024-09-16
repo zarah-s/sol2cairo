@@ -1,6 +1,6 @@
 use crate::mods::{
     constants::constants::FILE_PATH,
-    functions::helpers::global::{process_name, process_size, process_type, validate_identifier},
+    functions::helpers::global::validate_identifier,
     types::{
         compiler_errors::{CompilerError, ErrType, SyntaxError},
         identifiers::mapping::{process_mapping, Mapping},
@@ -375,7 +375,9 @@ fn process_non_mapping_variant(
                         }
                         iteration += 1;
                     }
-
+                    if open_contex != 0 {
+                        return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
+                    }
                     let raw_size = &stripped_spaces[index + 1..index + iteration];
                     if !raw_size.is_empty() {
                         size = Some(raw_size.to_vec().to_string());
@@ -397,10 +399,6 @@ fn process_non_mapping_variant(
                         if raw_name[1] != Token::SemiColon {
                             return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
                         }
-                    }
-
-                    if open_contex != 0 {
-                        return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
                     }
 
                     break;

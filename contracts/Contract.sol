@@ -51,11 +51,11 @@ sd[2000_000] yo = new Toes[]((2000_000).add()).com();
         address[(100**10)] owner;
         address payable[2] dd;
         uint256 collection_count;
-        mapping(uint256 => Types.Collection) collection_by_id;
+        mapping(sd => Types.Collection) collection_by_id;
         mapping(string => Types.Collection) collection_by_name;
         mapping(uint => mapping(uint => mapping(uint => uint))) totalSupply;
         mapping(uint => mapping(Types.Slot => address)) accessory;
-        mapping(address => mapping(uint256 => mapping(uint => Types.Token[]))) minted;
+        mapping(address => mapping(uint256 => mapping(uint => Types.Token[jj[1]]))) minted;
     }
 
     struct No_2sd {

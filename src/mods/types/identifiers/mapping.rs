@@ -236,7 +236,6 @@ pub fn process_mapping(
                     state = MappingState::Key;
                 } else if let MappingState::Gt = state {
                     let peek_next = combined.iter().collect::<Vec<_>>();
-
                     if let Some(_next) = peek_next.get(index + 4) {
                         if combined[index..index + 4].contains(&Token::OpenSquareBracket) {
                             is_array = true;
@@ -246,19 +245,33 @@ pub fn process_mapping(
                                     process_type(backward_slice, &mut r#type, combined)?;
                                     let sliced = &combined[index + 4..];
 
-                                    let size_definition = sliced
-                                        .iter()
-                                        .position(|pred| *pred == Token::CloseSquareBracket);
-
-                                    if let Some(_sz) = size_definition {
-                                        pad = _sz + index + 5;
-                                        size = process_size(combined, index + 3, _sz)?;
-                                    } else {
+                                    let mut open_contex = 1;
+                                    let mut iteration = 0;
+                                    for _strip in sliced {
+                                        match _strip {
+                                            Token::OpenSquareBracket => {
+                                                open_contex += 1;
+                                            }
+                                            Token::CloseSquareBracket => {
+                                                open_contex -= 1;
+                                                if open_contex == 0 {
+                                                    break;
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                        iteration += 1;
+                                    }
+                                    if open_contex != 0 {
                                         return Err((
-                                            format!("] \"{}\"", combined.to_string()),
-                                            ErrType::Missing,
+                                            "Uprocessible entity".to_string(),
+                                            ErrType::Syntax,
                                         ));
                                     }
+                                    size = Some(
+                                        combined[index + 3 + 1..][..iteration].to_vec().to_string(),
+                                    );
+                                    pad = iteration + index + 5;
                                 } else {
                                     return Err((
                                         format!(
@@ -273,19 +286,35 @@ pub fn process_mapping(
                                     let backward_slice = &combined[index..index + 1];
                                     process_type(backward_slice, &mut r#type, combined)?;
                                     let sliced = &combined[index + 2..];
-                                    let size_definition = sliced
-                                        .iter()
-                                        .position(|pred| *pred == Token::CloseSquareBracket);
 
-                                    if let Some(_sz) = size_definition {
-                                        size = process_size(combined, index + 1, _sz)?;
-                                        pad = _sz + index + 3;
-                                    } else {
+                                    let mut open_contex = 1;
+                                    let mut iteration = 0;
+                                    for _strip in sliced {
+                                        match _strip {
+                                            Token::OpenSquareBracket => {
+                                                open_contex += 1;
+                                            }
+                                            Token::CloseSquareBracket => {
+                                                open_contex -= 1;
+                                                if open_contex == 0 {
+                                                    break;
+                                                }
+                                            }
+                                            _ => {}
+                                        }
+                                        iteration += 1;
+                                    }
+                                    if open_contex != 0 {
                                         return Err((
-                                            format!("] \"{}\"", combined.to_string()),
-                                            ErrType::Missing,
+                                            "Uprocessible entity".to_string(),
+                                            ErrType::Syntax,
                                         ));
                                     }
+                                    size = Some(
+                                        combined[index + 1 + 1..][..iteration].to_vec().to_string(),
+                                    );
+
+                                    pad = iteration + index + 3;
                                 } else {
                                     return Err((
                                         format!(
