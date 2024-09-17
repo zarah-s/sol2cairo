@@ -256,10 +256,39 @@ pub fn process_mapping(
                     state = MappingState::Key;
                 } else if let MappingState::Gt = state {
                     let peek_next = combined.iter().collect::<Vec<_>>();
-                    if let Some(_next) = peek_next.get(index + 4) {
-                        if combined[index..index + 4].contains(&Token::OpenSquareBracket) {
+                    let mut open_context = 0;
+                    let mut iiteration = 0;
+                    {
+                        for ds in &combined[index..] {
+                            match ds {
+                                Token::OpenParenthesis => open_context += 1,
+                                Token::CloseParenthesis => {
+                                    if open_context == 0 {
+                                        break;
+                                    }
+                                    open_context -= 1;
+                                }
+                                _ => {}
+                            }
+
+                            iiteration += 1;
+                        }
+
+                        if open_context != 0 {
+                            return Err((
+                                format!(
+                                    "Invalid variant declaration \"{}\"",
+                                    _combined.to_string()
+                                ),
+                                ErrType::Syntax,
+                            ));
+                        }
+                    }
+
+                    if let Some(_next) = peek_next.get(index + iiteration) {
+                        if combined[index..index + iiteration].contains(&Token::OpenSquareBracket) {
                             is_array = true;
-                            if combined[index..index + 4].contains(&Token::Dot) {
+                            if combined[index..index + iiteration].contains(&Token::Dot) {
                                 if let Token::OpenSquareBracket = combined[index + 3] {
                                     let backward_slice = &combined[index..index + 3];
 
@@ -382,7 +411,10 @@ pub fn process_mapping(
                         }
                     } else {
                         return Err((
-                            format!("Invalid variant declaration \"{}\"", _combined.to_string()),
+                            format!(
+                                "Invalidcc variant declaration \"{}\"",
+                                _combined.to_string()
+                            ),
                             ErrType::Syntax,
                         ));
                     }
@@ -444,13 +476,13 @@ pub fn process_mapping(
                         mapping.update_payable_state(true);
                     } else {
                         return Err((
-                            format!("Invalidd variant declaration \"{}\"", _combined.to_string()),
+                            format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                             ErrType::Syntax,
                         ));
                     }
                 } else {
                     return Err((
-                        format!("Invalidd variant declaration \"{}\"", _combined.to_string()),
+                        format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                         ErrType::Syntax,
                     ));
                 }
@@ -458,7 +490,7 @@ pub fn process_mapping(
             Token::Space | Token::SemiColon => {}
             _ => {
                 return Err((
-                    format!("Invalidd variant declaration \"{}\"", _combined.to_string()),
+                    format!("Invalid variant declaration \"{}\"", _combined.to_string()),
                     ErrType::Syntax,
                 ))
             }
