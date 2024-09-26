@@ -1,29 +1,19 @@
 use crate::mods::{
+    ast::custom_error::{Arg, CustomErrorAST},
     constants::constants::FILE_PATH,
-    functions::helpers::global::{
-        get_env_vars, process_name, process_size, process_type, validate_identifier,
-    },
-    types::{
-        compiler_errors::{CompilerError, ErrType, SyntaxError},
-        line_descriptors::LineDescriptions,
-        token::{TTokenTrait, TVecExtension, Token},
+    errors::error::{CompilerError, SyntaxError},
+    utils::{
+        functions::global::{
+            get_env_vars, process_name, process_size, process_type, validate_identifier,
+        },
+        types::line_descriptors::LineDescriptions,
     },
 };
 
-#[derive(Debug)]
-pub struct Arg {
-    pub r#type: String,
-    pub name: Option<String>,
-    pub array_size: Option<String>,
-    pub is_array: bool,
-}
-
-#[derive(Debug)]
-pub struct CustomErrorIdentifier {
-    pub identifier: String,
-    pub line: String,
-    pub args: Option<Vec<Arg>>,
-}
+use crate::mods::lexer::{
+    lexer::{TTokenTrait, TVecExtension},
+    tokens::Token,
+};
 
 #[derive(Debug)]
 enum ErrorState {
@@ -32,9 +22,7 @@ enum ErrorState {
     Arg,
 }
 
-pub fn parse_custom_errors(
-    lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>,
-) -> Vec<CustomErrorIdentifier> {
+pub fn parse_custom_errors(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<CustomErrorAST> {
     let mut custom_errors = Vec::new();
 
     for lexem in lexems {
@@ -57,7 +45,7 @@ pub fn parse_custom_errors(
                     first_element.to_string()
                 ))
                 .throw_with_file_info(
-                    &std::env::var(FILE_PATH).unwrap(),
+                    &get_env_vars(FILE_PATH).unwrap(),
                     lexem.first().unwrap().line,
                 )
             }
@@ -85,35 +73,29 @@ pub fn parse_custom_errors(
             }
 
             if header_tokens.strip_spaces().is_empty() {
-                CompilerError::SyntaxError(
-                    crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
-                )
-                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
             }
 
             if header_tokens.strip_spaces().len() != 2 {
-                CompilerError::SyntaxError(
-                    crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                        header_tokens.to_string().trim(),
-                    ),
-                )
-                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    header_tokens.to_string().trim(),
+                ))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
                     validate_identifier(&identifier).unwrap_or_else(|err| {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
                     });
                     error_identifier = identifier.to_owned();
                 } else {
-                    CompilerError::SyntaxError(
-                        crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&format!(
-                            "Expecting identifier but found {}",
-                            header_tokens.strip_spaces().last().unwrap().to_string()
-                        )),
-                    )
-                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Expecting identifier but found {}",
+                        header_tokens.strip_spaces().last().unwrap().to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
                 }
             }
         }
@@ -335,7 +317,7 @@ pub fn parse_custom_errors(
                 arguments.push(arg);
             }
 
-            let error_construct = CustomErrorIdentifier {
+            let error_construct = CustomErrorAST {
                 identifier: error_identifier,
                 line: lexem[0].line.to_string(),
                 args: if arguments.is_empty() {

@@ -1,36 +1,21 @@
 use crate::mods::{
+    ast::event::{Arg, EventAST, EventVariants},
     constants::constants::FILE_PATH,
-    functions::helpers::global::{
-        get_env_vars, process_name, process_size, process_type, validate_identifier,
-    },
-    types::{
-        compiler_errors::{CompilerError, ErrType, SyntaxError},
-        line_descriptors::LineDescriptions,
-        token::{TTokenTrait, TVecExtension, Token},
+    errors::error::{CompilerError, SyntaxError},
+    utils::{
+        functions::global::{
+            get_env_vars, process_name, process_size, process_type, validate_identifier,
+        },
+        types::line_descriptors::LineDescriptions,
     },
 };
 
-#[derive(Debug)]
-pub struct Arg {
-    pub r#type: String,
-    pub name: Option<String>,
-    pub array_size: Option<String>,
-    pub is_array: bool,
-}
+use crate::mods::lexer::{
+    lexer::{TTokenTrait, TVecExtension},
+    tokens::Token,
+};
 
-#[derive(Debug)]
-pub struct EventIdentifierVariants {
-    pub indexed: bool,
-    pub variant: Arg,
-}
-#[derive(Debug)]
-pub struct EventIdentifier {
-    pub line: String,
-    pub identifier: String,
-    pub variants: Vec<EventIdentifierVariants>,
-}
-
-pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EventIdentifier> {
+pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EventAST> {
     let mut events = Vec::new();
 
     for lexem in lexems {
@@ -53,7 +38,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                     first_element.to_string()
                 ))
                 .throw_with_file_info(
-                    &std::env::var(FILE_PATH).unwrap(),
+                    &get_env_vars(FILE_PATH).unwrap(),
                     lexem.first().unwrap().line,
                 )
             }
@@ -81,41 +66,35 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
             }
 
             if header_tokens.strip_spaces().is_empty() {
-                CompilerError::SyntaxError(
-                    crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
-                )
-                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
             }
 
             if header_tokens.strip_spaces().len() != 2 {
-                CompilerError::SyntaxError(
-                    crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                        header_tokens.to_string().trim(),
-                    ),
-                )
-                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    header_tokens.to_string().trim(),
+                ))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
                     validate_identifier(&identifier).unwrap_or_else(|err| {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
                     });
                     event_identifier = identifier.to_owned();
                 } else {
-                    CompilerError::SyntaxError(
-                        crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&format!(
-                            "Expecting identifier but found {}",
-                            header_tokens.strip_spaces().last().unwrap().to_string()
-                        )),
-                    )
-                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Expecting identifier but found {}",
+                        header_tokens.strip_spaces().last().unwrap().to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
                 }
             }
         }
 
         {
-            let mut variants: Vec<EventIdentifierVariants> = Vec::new();
+            let mut variants: Vec<EventVariants> = Vec::new();
             let mut skipped_count = 0;
             let mut raw_args = Vec::new();
             let line = lexem.first().unwrap().line;
@@ -361,7 +340,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                     }
                 }
 
-                let arg = EventIdentifierVariants {
+                let arg = EventVariants {
                     indexed,
                     variant: Arg {
                         is_array,
@@ -373,7 +352,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                 variants.push(arg);
             }
 
-            let event_construct = EventIdentifier {
+            let event_construct = EventAST {
                 identifier: event_identifier,
                 variants,
                 line: lexem[0].line.to_string(),

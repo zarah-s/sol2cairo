@@ -1,366 +1,36 @@
 use crate::mods::{
+    ast::{
+        mapping::{Mapping, MappingAST, MappingHeader},
+        variable::{StraightVariable, VariableAST, VariableState, VariableType},
+    },
     constants::constants::FILE_PATH,
-    functions::helpers::global::{get_env_vars, validate_identifier},
-    types::{
-        compiler_errors::{CompilerError, ErrType, SyntaxError},
-        identifiers::mapping::MappingIdentifier,
-        line_descriptors::LineDescriptions,
-        token::{Mutability, TStringExtension, TTokenTrait, TVecExtension, Token, Visibility},
+    errors::error::{CompilerError, ErrType, SyntaxError},
+    utils::{
+        functions::global::{get_env_vars, validate_identifier},
+        types::{
+            line_descriptors::LineDescriptions,
+            mutability::Mutability,
+            value::{
+                AddressValue, AddressVariable, ArgumentType, ArrayValue, BooleanValue,
+                BooleanVariable, BytesValue, BytesVariable, ExpressionTypes, ExpressionValue,
+                ExpressionVariable, FunctionPTRInvocation, FunctionValue, FunctionValueType,
+                FunctionVariable, IdentifierValue, InstanceValue, InstanceVariable, IntegerValue,
+                IntegerVariable, KeywordValue, PayableValue, StringValue, StringVariable, Value,
+                VariantValue,
+            },
+            visibility::Visibility,
+        },
     },
 };
 
-use super::mapping::{process_mapping, Mapping, MappingHeader};
-#[derive(Debug)]
+use crate::mods::lexer::{
+    lexer::{TStringExtension, TTokenTrait, TVecExtension},
+    tokens::Token,
+};
 
-enum TypeCast {
-    Value(Box<VariableValue>),
-    Cast(Box<TypeCast>),
-}
+use super::mapping::process_mapping;
 
-#[derive(Debug)]
-
-enum StringVariable {
-    Literal(String),
-    TypeCast(Box<VariableValue>),
-}
-
-#[derive(Debug)]
-
-struct StringValue {
-    pub value: StringVariable,
-    pub then: Option<Box<VariableValue>>,
-}
-#[derive(Debug)]
-
-enum IntegerVariable {
-    Literal(String),
-    TypeCast {
-        size: Option<u16>,
-        value: Box<VariableValue>,
-    },
-}
-#[derive(Debug)]
-
-struct IntegerValue {
-    pub value: IntegerVariable,
-    pub then: Option<Box<VariableValue>>,
-}
-#[derive(Debug)]
-
-enum BytesVariable {
-    Literal(String),
-    TypeCast {
-        size: Option<u16>,
-        value: Box<VariableValue>,
-    },
-}
-
-#[derive(Debug)]
-struct BytesValue {
-    pub value: BytesVariable,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-
-enum AddressVariable {
-    Literal(String),
-    TypeCast(Box<VariableValue>),
-}
-
-#[derive(Debug)]
-
-struct AddressValue {
-    pub value: AddressVariable,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-
-enum BooleanVariable {
-    Literal(String),
-    TypeCast(Box<VariableValue>),
-}
-#[derive(Debug)]
-
-struct BooleanValue {
-    pub value: BooleanVariable,
-    pub then: Option<Box<VariableValue>>,
-}
-#[derive(Debug)]
-
-enum ExpressionTypes {
-    PostIncrement,
-    PostDecrement,
-    PreIncrement,
-    PreDecrement,
-    Eq,
-    TernaryIf,
-    TernaryEl,
-    Add,
-    Sub,
-    Mul,
-    Div,
-    Gt,
-    Lt,
-    GtEq,
-    NotEq,
-    LtEq,
-    PlusEq,
-    MinusEq,
-    DivEq,
-    MulEq,
-    LgOr,
-    BtOr,
-    LgAnd,
-    BtAnd,
-    Xor,
-    BtNot,
-    LgNot,
-}
-#[derive(Debug)]
-
-struct ExpressionVariable {
-    pub r#type: ExpressionTypes,
-    pub operand: Box<VariableValue>,
-}
-
-#[derive(Debug)]
-struct ExpressionValue {
-    pub value: ExpressionVariable,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-
-enum FunctionValueType {
-    Global,
-    Defined,
-}
-#[derive(Debug)]
-
-struct ContractInstanceValue {
-    pub identifier: String,
-    pub arguments: Vec<VariableValue>,
-}
-#[derive(Debug)]
-
-struct ContractFunctionValue {
-    pub identifier: String,
-    pub arguments: Vec<VariableValue>,
-    pub function_identifier: String,
-    pub function_args: Vec<VariableValue>,
-}
-#[derive(Debug)]
-
-enum Contractvalue {
-    ContractFunctionValue(ContractFunctionValue),
-    ContractInstanceValue(ContractInstanceValue),
-}
-
-#[derive(Debug)]
-enum ArgumentType {
-    Positional(VariableValue),
-    Named { key: String, value: VariableValue },
-}
-#[derive(Debug)]
-
-struct FunctionVariable {
-    pub identifier: String,
-    pub arguments: Option<Vec<ArgumentType>>,
-    pub r#type: FunctionValueType,
-}
-#[derive(Debug)]
-
-struct FunctionValue {
-    pub value: FunctionVariable,
-    pub then: Option<Box<VariableValue>>,
-}
-#[derive(Debug)]
-struct IdentifierValue {
-    pub value: String,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-struct KeywordValue {
-    pub value: Token,
-    pub then: Option<Box<VariableValue>>,
-}
-#[derive(Debug)]
-
-struct FunctionPTRInvocation {
-    pub args: Option<Vec<ArgumentType>>,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-
-struct StructInstanceValue {
-    pub identifier: String,
-    pub variants: Vec<[String; 2]>,
-}
-
-#[derive(Debug)]
-
-enum StructValue {
-    Instance(StructInstanceValue),
-    Variant(VariantValue),
-}
-
-#[derive(Debug)]
-struct InstanceVariable {
-    pub r#type: String,
-    pub arguments: Option<Vec<ArgumentType>>,
-    pub size: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-
-struct InstanceValue {
-    pub value: InstanceVariable,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-
-enum NestType {
-    Variant,
-    Method,
-}
-
-#[derive(Debug)]
-
-struct NestedValue {
-    pub r#type: NestType,
-    pub value: Box<VariableValue>,
-}
-
-#[derive(Debug)]
-struct ArrayValue {
-    pub variants: Vec<VariableValue>,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-struct VariantValue {
-    pub variant: Box<VariableValue>,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-struct PayableValue {
-    pub value: Box<VariableValue>,
-    pub then: Option<Box<VariableValue>>,
-}
-
-#[derive(Debug)]
-pub enum VariableValue {
-    StringValue(StringValue),
-    ArrayValue(ArrayValue),
-    IntegerValue(IntegerValue),
-    BytesValue(BytesValue),
-    AddressValue(AddressValue),
-    BooleanValue(BooleanValue),
-    FunctionValue(FunctionValue),
-    VariantValue(VariantValue),
-    FunctionPTRInvocation(FunctionPTRInvocation),
-    // StructValue(StructValue),
-    ExpressionValue(ExpressionValue),
-    KeywordValue(KeywordValue),
-    PayableValue(PayableValue),
-    UnitValue(String, Token),
-    // StructOrFunctionValue(FunctionValue),
-    // LibOrStructOrEnumValue(VariantValue),
-    // MappingValue(VariantValue),
-    // GlobalVarValue(VariantValue),
-    IdentifierValue(IdentifierValue),
-    Context {
-        value: Box<VariableValue>,
-        then: Option<Box<VariableValue>>,
-    },
-    // Contractvalue(Contractvalue),
-    InstanceValue(InstanceValue),
-    // NestedValue(NestedValue),
-    None,
-}
-
-impl VariableValue {
-    fn add_method(&mut self, new: VariableValue) {
-        match self {
-            Self::None => {
-                *self = new;
-            }
-            _ => {
-                if self.access_then().is_none() {
-                    *self.access_then() = Some(Box::new(new));
-                } else {
-                    VariableValue::od(&mut self.access_then().as_mut().unwrap(), new);
-                }
-            }
-        }
-    }
-
-    fn od(oth: &mut Box<VariableValue>, new: VariableValue) {
-        match **oth {
-            VariableValue::None => *oth = Box::new(new),
-            _ => {
-                if oth.access_then().is_none() {
-                    *oth.access_then().as_mut().unwrap() = Box::new(new);
-                } else {
-                    VariableValue::od(&mut oth.access_then().as_mut().unwrap(), new)
-                }
-            }
-        }
-    }
-    fn access_then(&mut self) -> &mut Option<Box<VariableValue>> {
-        match self {
-            VariableValue::FunctionValue(value) => &mut value.then,
-            _ => {
-                panic!("Detected non method type")
-            }
-        }
-    }
-}
-
-#[derive(Debug)]
-
-struct StraightVariable {
-    pub data_type: String,
-    pub visibility: Visibility,
-    pub mutability: Mutability,
-    pub name: String,
-    pub is_array: bool,
-    pub array_size: Option<String>,
-    pub data_location: Option<Token>,
-}
-
-#[derive(Debug)]
-
-enum VariableType {
-    Tupple,
-    Mapping(MappingIdentifier),
-    Straight(StraightVariable),
-}
-
-#[derive(Debug)]
-pub struct VariableIdentifier {
-    pub variableType: VariableType,
-    pub value: Option<VariableValue>,
-}
-
-enum VariableState {
-    None,
-    DataType,
-    Mutability,
-    Visibility,
-    Identifier,
-    DataLocation,
-    Assign,
-    Value,
-}
-
-pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<VariableIdentifier> {
+pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<VariableAST> {
     let mut variables = Vec::new();
 
     for lexem in lexems {
@@ -427,21 +97,21 @@ pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Va
 fn process_var_construct(
     combined: &Vec<Token>,
     line: i32,
-) -> Result<VariableIdentifier, (String, ErrType)> {
+) -> Result<VariableAST, (String, ErrType)> {
     match combined.strip_spaces()[0] {
         Token::Mapping => {
             let mut mapping = Mapping::new();
             let mut mapping_header = MappingHeader::new();
             process_mapping(combined, &mut mapping, &mut mapping_header)?;
 
-            let mapping_construct = MappingIdentifier {
+            let mapping_construct = MappingAST {
                 header: mapping_header,
                 map: mapping,
             };
 
-            let variable_construct = VariableIdentifier {
+            let variable_construct = VariableAST {
                 value: None,
-                variableType: VariableType::Mapping(mapping_construct),
+                variable_type: VariableType::Mapping(mapping_construct),
             };
 
             return Ok(variable_construct);
@@ -454,6 +124,7 @@ fn process_var_construct(
             let mut state = VariableState::None;
             let mut data_type = String::new();
             let mut is_array = false;
+            let mut is_payable = false;
             let mut variable_identifier = String::new();
             let mut array_size: Option<String> = None;
             let mut visibility = Visibility::Internal;
@@ -514,6 +185,45 @@ fn process_var_construct(
                         }
 
                         state = VariableState::DataType;
+                    }
+
+                    Token::Payable => {
+                        if let VariableState::DataType = state {
+                            if data_type.tokenize() != Token::Address {
+                                return Err((
+                                    "Unexpected payable for non-address type".to_string(),
+                                    ErrType::Unexpected,
+                                ));
+                            }
+                            if is_array {
+                                return Err(("Unprocessible entity".to_string(), ErrType::Syntax));
+                            }
+                            is_payable = true;
+
+                            if let Token::OpenSquareBracket = combined[index + 1] {
+                                is_array = true;
+                                let close_index = combined
+                                    .iter()
+                                    .position(|pred| *pred == Token::CloseSquareBracket);
+                                if let Some(_close_index) = close_index {
+                                    let slice = &combined[2.._close_index];
+                                    if !slice.is_empty() {
+                                        let mut stringified_array_size = String::new();
+                                        pad = index + 1 + _close_index + 1;
+                                        for slc in slice {
+                                            stringified_array_size.push_str(&slc.to_string());
+                                        }
+                                        array_size = Some(stringified_array_size);
+                                    } else {
+                                        pad = index + 3;
+                                    }
+                                } else {
+                                    return Err(("]".to_string(), ErrType::Missing));
+                                }
+                            }
+                        } else {
+                            return Err((token.to_string(), ErrType::Unexpected));
+                        }
                     }
 
                     Token::Public
@@ -703,16 +413,15 @@ fn process_var_construct(
             let mut value = None;
             if !raw_value.is_empty() {
                 value = Some(process_variable_value(raw_value, line));
-
-                println!("{:#?}", value);
             }
-            let variable_construct = VariableIdentifier {
-                variableType: VariableType::Straight(StraightVariable {
+            let variable_construct = VariableAST {
+                variable_type: VariableType::Straight(StraightVariable {
                     array_size,
                     data_location,
                     data_type,
                     is_array,
                     mutability,
+                    is_payable,
                     name: variable_identifier,
                     visibility,
                 }),
@@ -724,7 +433,7 @@ fn process_var_construct(
     }
 }
 
-fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
+fn process_variable_value(raw_value: Vec<Token>, line: i32) -> Value {
     if raw_value.strip_spaces().is_empty() {
         CompilerError::SyntaxError(SyntaxError::SyntaxError(""))
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
@@ -761,7 +470,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                 }
 
-                let variable_value = VariableValue::StringValue(StringValue {
+                let variable_value = Value::StringValue(StringValue {
                     value: StringVariable::Literal(val.to_string()),
                     then: None,
                 });
@@ -776,13 +485,13 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                     }
 
-                    let variable_value = VariableValue::IntegerValue(IntegerValue {
+                    let variable_value = Value::IntegerValue(IntegerValue {
                         value: IntegerVariable::Literal(_identifier.to_owned()),
                         then: None,
                     });
                     return variable_value;
                 } else {
-                    let variable_value = VariableValue::IdentifierValue(IdentifierValue {
+                    let variable_value = Value::IdentifierValue(IdentifierValue {
                         value: _identifier.to_owned(),
                         then: None,
                     });
@@ -821,7 +530,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                 }
-                let mut nested = VariableValue::None;
+                let mut nested = Value::None;
 
                 let method_data = &strip_data[iteration + 1..];
 
@@ -838,13 +547,13 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 let raw_args = &strip_data[1..iteration];
 
                 if raw_args.is_empty() {
-                    let variable_value = VariableValue::FunctionValue(FunctionValue {
+                    let variable_value = Value::FunctionValue(FunctionValue {
                         value: FunctionVariable {
                             arguments: None,
                             identifier: _identifier.to_string(),
                             r#type: FunctionValueType::Defined,
                         },
-                        then: if let VariableValue::None = nested {
+                        then: if let Value::None = nested {
                             None
                         } else {
                             Some(Box::new(nested))
@@ -854,13 +563,13 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 } else {
                     let arguments = process_args(&raw_value, raw_args, line);
 
-                    let variable_value = VariableValue::FunctionValue(FunctionValue {
+                    let variable_value = Value::FunctionValue(FunctionValue {
                         value: FunctionVariable {
                             arguments: Some(arguments),
                             identifier: _identifier.to_string(),
                             r#type: FunctionValueType::Defined,
                         },
-                        then: if let VariableValue::None = nested {
+                        then: if let Value::None = nested {
                             None
                         } else {
                             Some(Box::new(nested))
@@ -883,7 +592,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 }
 
                 let nest = process_variable_value(raw_value.strip_spaces()[2..].to_vec(), line);
-                let variable_value = VariableValue::IdentifierValue(IdentifierValue {
+                let variable_value = Value::IdentifierValue(IdentifierValue {
                     value: _identifier.to_string(),
                     then: Some(Box::new(nest)),
                 });
@@ -903,7 +612,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 }
 
                 let nest = process_variable_value(raw_value.strip_spaces()[1..].to_vec(), line);
-                let variable_value = VariableValue::IdentifierValue(IdentifierValue {
+                let variable_value = Value::IdentifierValue(IdentifierValue {
                     value: _identifier.to_string(),
                     then: Some(Box::new(nest)),
                 });
@@ -924,7 +633,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                         | Token::Szabo
                         | Token::Finney
                         | Token::Ether => {
-                            let variable_value = VariableValue::UnitValue(
+                            let variable_value = Value::UnitValue(
                                 _identifier.to_owned(),
                                 raw_value.strip_spaces()[1].to_owned(),
                             );
@@ -939,7 +648,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                         }
                     }
                 } else {
-                    let variable_value = VariableValue::IdentifierValue(IdentifierValue {
+                    let variable_value = Value::IdentifierValue(IdentifierValue {
                         value: _identifier.to_string(),
                         then: Some(Box::new(process_variable_value(
                             raw_value.strip_spaces()[1..].to_vec(),
@@ -983,10 +692,10 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
-            let mut nested = VariableValue::None;
+            let mut nested = Value::None;
             let raw_variants = &raw_value.strip_spaces()[1..iteration];
             let method_data = &raw_value.strip_spaces()[iteration + 1..];
-            let mut variants: Vec<VariableValue> = Vec::new();
+            let mut variants: Vec<Value> = Vec::new();
             let mut single_variant = None;
             if !raw_variants.is_empty() {
                 let splits = raw_variants
@@ -1027,18 +736,18 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             }
 
             let variable_value = if single_variant.is_none() {
-                VariableValue::ArrayValue(ArrayValue {
+                Value::ArrayValue(ArrayValue {
                     variants,
-                    then: if let VariableValue::None = nested {
+                    then: if let Value::None = nested {
                         None
                     } else {
                         Some(Box::new(nested))
                     },
                 })
             } else {
-                VariableValue::VariantValue(VariantValue {
+                Value::VariantValue(VariantValue {
                     variant: Box::new(single_variant.unwrap()),
-                    then: if let VariableValue::None = nested {
+                    then: if let Value::None = nested {
                         None
                     } else {
                         Some(Box::new(nested))
@@ -1079,7 +788,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
 
-            let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+            let variable_value = Value::ExpressionValue(ExpressionValue {
                 value: ExpressionVariable {
                     r#type: ExpressionTypes::TernaryIf,
                     operand: Box::new(process_variable_value(
@@ -1087,7 +796,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                         line,
                     )),
                 },
-                then: Some(Box::new(VariableValue::ExpressionValue(ExpressionValue {
+                then: Some(Box::new(Value::ExpressionValue(ExpressionValue {
                     value: ExpressionVariable {
                         r#type: ExpressionTypes::TernaryEl,
                         operand: Box::new(process_variable_value(else_block.to_vec(), line)),
@@ -1100,7 +809,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         }
 
         Token::True | Token::False => {
-            let mut nest: Option<Box<VariableValue>> = None;
+            let mut nest: Option<Box<Value>> = None;
 
             if raw_value.strip_spaces().len() > 1 {
                 match raw_value.strip_spaces()[1] {
@@ -1118,7 +827,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 )));
             }
 
-            let variable_value = VariableValue::BooleanValue(BooleanValue {
+            let variable_value = Value::BooleanValue(BooleanValue {
                 value: BooleanVariable::Literal(raw_value.strip_spaces()[0].to_string()),
                 then: nest,
             });
@@ -1134,7 +843,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             }
 
             if stripped[1] == Token::Equals {
-                let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                let variable_value = Value::ExpressionValue(ExpressionValue {
                     value: ExpressionVariable {
                         r#type: if stripped[0] == Token::Gt {
                             ExpressionTypes::GtEq
@@ -1148,7 +857,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
 
                 return variable_value;
             } else {
-                let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                let variable_value = Value::ExpressionValue(ExpressionValue {
                     value: ExpressionVariable {
                         r#type: if stripped[0] == Token::Gt {
                             ExpressionTypes::Gt
@@ -1171,7 +880,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
             if stripped[0] == Token::Equals && stripped[1] == Token::Equals {
-                let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                let variable_value = Value::ExpressionValue(ExpressionValue {
                     value: ExpressionVariable {
                         r#type: ExpressionTypes::Eq,
                         operand: Box::new(process_variable_value(stripped[2..].to_vec(), line)),
@@ -1189,7 +898,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         Token::This | Token::Msg | Token::Block | Token::Tx => {
             let stripped_spaces = raw_value.strip_spaces();
             if stripped_spaces.len() == 1 {
-                let variable_value = VariableValue::KeywordValue(KeywordValue {
+                let variable_value = Value::KeywordValue(KeywordValue {
                     value: stripped_spaces[0].to_owned(),
                     then: None,
                 });
@@ -1198,7 +907,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 if let Token::Dot = stripped_spaces[1] {
                     let nest = process_variable_value(stripped_spaces[2..].to_vec(), line);
 
-                    let variable_value = VariableValue::KeywordValue(KeywordValue {
+                    let variable_value = Value::KeywordValue(KeywordValue {
                         value: stripped_spaces[0].to_owned(),
                         then: Some(Box::new(nest)),
                     });
@@ -1212,7 +921,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         Token::Bool => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
-            let variable_value = VariableValue::BooleanValue(BooleanValue {
+            let variable_value = Value::BooleanValue(BooleanValue {
                 value: BooleanVariable::TypeCast(Box::new(process_variable_value(
                     cast_value.to_vec(),
                     line,
@@ -1224,7 +933,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         Token::Payable => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
             let payable_value = process_variable_value(cast_value.to_vec(), line);
-            let variable_value = VariableValue::PayableValue(PayableValue {
+            let variable_value = Value::PayableValue(PayableValue {
                 value: Box::new(payable_value),
                 then: nested,
             });
@@ -1248,7 +957,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             let val = &raw_value.strip_spaces()[1].to_string()
                 [1..raw_value.strip_spaces()[1].to_string().len() - 1];
 
-            let variable_value = VariableValue::BytesValue(BytesValue {
+            let variable_value = Value::BytesValue(BytesValue {
                 value: BytesVariable::Literal(val.to_string()),
                 then: None,
             });
@@ -1258,7 +967,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         Token::String => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
-            let variable_value = VariableValue::StringValue(StringValue {
+            let variable_value = Value::StringValue(StringValue {
                 value: StringVariable::TypeCast(Box::new(process_variable_value(
                     cast_value.to_vec(),
                     line,
@@ -1270,7 +979,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         Token::Bytes(_size) => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
-            let variable_value = VariableValue::BytesValue(BytesValue {
+            let variable_value = Value::BytesValue(BytesValue {
                 value: BytesVariable::TypeCast {
                     size: _size.to_owned(),
                     value: Box::new(process_variable_value(cast_value, line)),
@@ -1286,7 +995,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             if stripped_value.len() >= 2 {
                 if let Token::Bang = stripped_value[0] {
                     if let Token::Equals = stripped_value[1] {
-                        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                        let variable_value = Value::ExpressionValue(ExpressionValue {
                             value: ExpressionVariable {
                                 r#type: ExpressionTypes::NotEq,
                                 operand: Box::new(process_variable_value(
@@ -1301,7 +1010,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     } else {
                         let operand = process_variable_value(stripped_value[1..].to_vec(), line);
                         match operand {
-                            VariableValue::BooleanValue(_) => {}
+                            Value::BooleanValue(_) => {}
                             _ => {
                                 CompilerError::SyntaxError(SyntaxError::SyntaxError(
                                     "Built-in unary operator ! cannot be applied to type",
@@ -1310,7 +1019,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                             }
                         }
 
-                        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                        let variable_value = Value::ExpressionValue(ExpressionValue {
                             value: ExpressionVariable {
                                 r#type: ExpressionTypes::LgNot,
                                 operand: Box::new(operand),
@@ -1322,7 +1031,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     }
                 } else {
                     if stripped_value[0] == stripped_value[1] {
-                        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                        let variable_value = Value::ExpressionValue(ExpressionValue {
                             value: ExpressionVariable {
                                 r#type: match stripped_value[0] {
                                     Token::Or => ExpressionTypes::LgOr,
@@ -1352,7 +1061,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
 
                         return variable_value;
                     } else {
-                        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+                        let variable_value = Value::ExpressionValue(ExpressionValue {
                             value: ExpressionVariable {
                                 r#type: match stripped_value[0] {
                                     Token::Or => ExpressionTypes::BtOr,
@@ -1393,7 +1102,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         Token::Address => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
-            let variable_value = VariableValue::AddressValue(AddressValue {
+            let variable_value = Value::AddressValue(AddressValue {
                 value: AddressVariable::TypeCast(Box::new(process_variable_value(
                     cast_value.to_vec(),
                     line,
@@ -1405,7 +1114,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
         Token::Uint(_size) | Token::Int(_size) => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 
-            let variable_value = VariableValue::IntegerValue(IntegerValue {
+            let variable_value = Value::IntegerValue(IntegerValue {
                 value: IntegerVariable::TypeCast {
                     size: _size.to_owned(),
                     value: Box::new(process_variable_value(cast_value.to_vec(), line)),
@@ -1583,7 +1292,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
 
                                 let size = process_variable_value(raw_args.to_vec(), line);
                                 let method_data = &arg_data[arg_iteration + 1..];
-                                let mut nested = VariableValue::None;
+                                let mut nested = Value::None;
 
                                 if !method_data.is_empty() {
                                     match method_data[0] {
@@ -1598,7 +1307,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                                 arg_data[arg_iteration + 1..].to_vec(),
                                                 line,
                                             );
-                                            if let VariableValue::ArrayValue(_value) = &nested {
+                                            if let Value::ArrayValue(_value) = &nested {
                                                 /* VALIDATIONS */
                                                 if _value.variants.len() != 1 {
                                                     CompilerError::SyntaxError(
@@ -1638,13 +1347,13 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                                     }
                                 }
 
-                                let variable_value = VariableValue::InstanceValue(InstanceValue {
+                                let variable_value = Value::InstanceValue(InstanceValue {
                                     value: InstanceVariable {
                                         r#type: stripped_spaces[1].to_string(),
                                         size: Some(Box::new(size)),
                                         arguments: None,
                                     },
-                                    then: if let VariableValue::None = nested {
+                                    then: if let Value::None = nested {
                                         None
                                     } else {
                                         Some(Box::new(nested))
@@ -1691,7 +1400,7 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
             let cast_value = &raw_value.strip_spaces()[1..iteration];
-            let mut nest = VariableValue::None;
+            let mut nest = Value::None;
             if raw_value.strip_spaces().get(iteration + 1).is_some() {
                 nest = process_method_data_with_possible_fn_ptr_invocation(
                     || {},
@@ -1702,9 +1411,9 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
                 );
             }
             let variable_value = process_variable_value(cast_value.to_vec(), line);
-            return VariableValue::Context {
+            return Value::Context {
                 value: Box::new(variable_value),
-                then: if let VariableValue::None = nest {
+                then: if let Value::None = nest {
                     None
                 } else {
                     Some(Box::new(nest))
@@ -1719,10 +1428,10 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> VariableValue {
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
         }
     }
-    VariableValue::None
+    Value::None
 }
 
-fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Box<VariableValue>>) {
+fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Box<Value>>) {
     /* VALIDATION CHECKS */
 
     if raw_value.strip_spaces().len() < 2 {
@@ -1756,7 +1465,7 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
         CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
     }
-    let mut nest: VariableValue = VariableValue::None;
+    let mut nest: Value = Value::None;
     if raw_value.strip_spaces().get(close_index + 1).is_some() {
         nest = process_method_data_with_possible_fn_ptr_invocation(
             || {},
@@ -1769,7 +1478,7 @@ fn process_type_cast(raw_value: Vec<Token>, line: i32) -> (Vec<Token>, Option<Bo
     let cast_value = &raw_value.strip_spaces()[2..close_index];
     (
         cast_value.to_vec(),
-        if let VariableValue::None = nest {
+        if let Value::None = nest {
             None
         } else {
             Some(Box::new(nest))
@@ -1841,7 +1550,7 @@ fn process_args(raw_value: &Vec<Token>, raw_args: &[Token], line: i32) -> Vec<Ar
                 let mut key = String::new();
                 let value = process_variable_value(key_value_split[1].to_vec(), line);
 
-                if let VariableValue::None = value {
+                if let Value::None = value {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                         "Unprocessible entity for {}",
                         raw_value.to_string()
@@ -1910,8 +1619,8 @@ fn process_method_data_with_possible_fn_ptr_invocation(
     iteration: usize,
     line: i32,
     method_data: &[Token],
-) -> VariableValue {
-    let mut nested = VariableValue::None;
+) -> Value {
+    let mut nested = Value::None;
     match method_data[0] {
         Token::Dot => {
             nested =
@@ -1920,7 +1629,7 @@ fn process_method_data_with_possible_fn_ptr_invocation(
         Token::OpenSquareBracket => {
             nested =
                 process_variable_value(raw_value.strip_spaces()[iteration + 1..].to_vec(), line);
-            if let VariableValue::ArrayValue(_value) = &nested {
+            if let Value::ArrayValue(_value) = &nested {
                 /* VALIDATIONS */
                 if _value.variants.len() != 1 {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
@@ -1960,7 +1669,7 @@ fn process_method_data_with_possible_fn_ptr_invocation(
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
 
-            let mut fn_ptr_nested = VariableValue::None;
+            let mut fn_ptr_nested = Value::None;
             let fn_ptr_raw_variants = &method_data.to_vec().strip_spaces()[1..fn_ptr_iteration];
             let fn_ptr_method_data = &method_data.to_vec().strip_spaces()[fn_ptr_iteration + 1..];
             if !fn_ptr_method_data.is_empty() {
@@ -1974,18 +1683,18 @@ fn process_method_data_with_possible_fn_ptr_invocation(
             }
             if !fn_ptr_raw_variants.is_empty() {
                 let fn_ptr_arguments = process_args(&raw_value, fn_ptr_raw_variants, line);
-                nested = VariableValue::FunctionPTRInvocation(FunctionPTRInvocation {
+                nested = Value::FunctionPTRInvocation(FunctionPTRInvocation {
                     args: Some(fn_ptr_arguments),
-                    then: if let VariableValue::None = fn_ptr_nested {
+                    then: if let Value::None = fn_ptr_nested {
                         None
                     } else {
                         Some(Box::new(fn_ptr_nested))
                     },
                 });
             } else {
-                nested = VariableValue::FunctionPTRInvocation(FunctionPTRInvocation {
+                nested = Value::FunctionPTRInvocation(FunctionPTRInvocation {
                     args: None,
-                    then: if let VariableValue::None = fn_ptr_nested {
+                    then: if let Value::None = fn_ptr_nested {
                         None
                     } else {
                         Some(Box::new(fn_ptr_nested))
@@ -2013,7 +1722,7 @@ fn process_contract_like_instance(
     line: i32,
     identifier: &Token,
     validation_on_empty_args: impl Fn(),
-) -> VariableValue {
+) -> Value {
     let stripped_spaces = raw_value.strip_spaces();
     let _identifier = identifier.to_string();
 
@@ -2041,7 +1750,7 @@ fn process_contract_like_instance(
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
     }
 
-    let mut nested: VariableValue = VariableValue::None;
+    let mut nested: Value = Value::None;
     let raw_args: &[Token] = &stripped_spaces[3..iteration];
     let method_data: &[Token] = &stripped_spaces[iteration + 1..];
 
@@ -2052,7 +1761,7 @@ fn process_contract_like_instance(
             }
             Token::OpenSquareBracket => {
                 nested = process_variable_value(stripped_spaces[iteration + 1..].to_vec(), line);
-                if let VariableValue::ArrayValue(_value) = &nested {
+                if let Value::ArrayValue(_value) = &nested {
                     /* VALIDATIONS */
                     if _value.variants.len() != 1 {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
@@ -2077,13 +1786,13 @@ fn process_contract_like_instance(
 
     if raw_args.is_empty() {
         validation_on_empty_args();
-        let variable_value = VariableValue::InstanceValue(InstanceValue {
+        let variable_value = Value::InstanceValue(InstanceValue {
             value: InstanceVariable {
                 r#type: _identifier.to_owned(),
                 size: None,
                 arguments: None,
             },
-            then: if let VariableValue::None = nested {
+            then: if let Value::None = nested {
                 None
             } else {
                 Some(Box::new(nested))
@@ -2096,13 +1805,13 @@ fn process_contract_like_instance(
         if arguments.len() > 1 {
             validation_on_empty_args()
         }
-        let variable_value = VariableValue::InstanceValue(InstanceValue {
+        let variable_value = Value::InstanceValue(InstanceValue {
             value: InstanceVariable {
                 r#type: _identifier.to_owned(),
                 size: None,
                 arguments: Some(arguments),
             },
-            then: if let VariableValue::None = nested {
+            then: if let Value::None = nested {
                 None
             } else {
                 Some(Box::new(nested))
@@ -2113,7 +1822,7 @@ fn process_contract_like_instance(
     }
 }
 
-fn process_math_operation(raw_value: &Vec<Token>, line: i32, operation: &Token) -> VariableValue {
+fn process_math_operation(raw_value: &Vec<Token>, line: i32, operation: &Token) -> Value {
     let stripped_value = raw_value.strip_spaces();
     let operands = &stripped_value[1..];
     if operands.is_empty() {
@@ -2122,7 +1831,7 @@ fn process_math_operation(raw_value: &Vec<Token>, line: i32, operation: &Token) 
     }
 
     if operands.len() == 1 && operands[0] == *operation {
-        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+        let variable_value = Value::ExpressionValue(ExpressionValue {
             value: ExpressionVariable {
                 r#type: match operation {
                     Token::Plus => ExpressionTypes::PostIncrement,
@@ -2136,14 +1845,14 @@ fn process_math_operation(raw_value: &Vec<Token>, line: i32, operation: &Token) 
                         unreachable!()
                     }
                 },
-                operand: Box::new(VariableValue::None),
+                operand: Box::new(Value::None),
             },
             then: None,
         });
         return variable_value;
     } else if stripped_value.len() > 2 && stripped_value[0] == stripped_value[1] {
         if *operation == Token::Plus || *operation == Token::Minus {
-            let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+            let variable_value = Value::ExpressionValue(ExpressionValue {
                 value: ExpressionVariable {
                     r#type: match operation {
                         Token::Plus => ExpressionTypes::PreIncrement,
@@ -2173,7 +1882,7 @@ fn process_math_operation(raw_value: &Vec<Token>, line: i32, operation: &Token) 
             unreachable!()
         }
     } else if stripped_value.len() > 1 && stripped_value[1] == Token::Equals {
-        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+        let variable_value = Value::ExpressionValue(ExpressionValue {
             value: ExpressionVariable {
                 r#type: match operation {
                     Token::Plus => ExpressionTypes::PlusEq,
@@ -2203,7 +1912,7 @@ fn process_math_operation(raw_value: &Vec<Token>, line: i32, operation: &Token) 
             )))
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
         }
-        let variable_value = VariableValue::ExpressionValue(ExpressionValue {
+        let variable_value = Value::ExpressionValue(ExpressionValue {
             value: ExpressionVariable {
                 r#type: match operation {
                     Token::Plus => ExpressionTypes::Add,

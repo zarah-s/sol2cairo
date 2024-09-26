@@ -1,4 +1,7 @@
-use super::token::{TStringExtension, TVecExtension, Token};
+use crate::mods::lexer::{
+    lexer::{TStringExtension, TVecExtension},
+    tokens::Token,
+};
 
 #[derive(Debug, Clone)]
 pub struct LineDescriptions<T> {

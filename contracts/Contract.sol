@@ -5,9 +5,11 @@ library Name {
         uint oi =1>=1&& !true?&1:1+=1;
         mapping (sd => mapping (address => uint) )  name;
         mapping (address => uint) name;
+ address payable[] ddd;
+function ddd(uint osad) external {
         bytes public buffer = new bytes(2);
 
-
+}
     uint oi = (1 days).count(payable(address(jane)));
 
     address yo = address(msg.sender);

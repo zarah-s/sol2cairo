@@ -2,9 +2,9 @@ use std::{io::ErrorKind, process};
 
 use tokio::fs;
 
-use crate::mods::types::{
-    compiler_errors::{CompilerError, IOError},
-    line_descriptors::LineDescriptions,
+use crate::mods::{
+    errors::error::{CompilerError, IOError},
+    utils::types::line_descriptors::LineDescriptions,
 };
 
 pub async fn process_file_contents(args: &Vec<String>) -> Vec<LineDescriptions<String>> {

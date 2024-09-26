@@ -2,25 +2,23 @@ use std::env;
 
 use crate::mods::{
     constants::constants::FILE_PATH,
-    functions::{
-        controllers::process_file_contents::process_file_contents,
-        helpers::global::validate_identifier,
+    errors::error::{CompilerError, SyntaxError},
+    lexer::{
+        lexer::{TTokenTrait, TVecExtension},
+        tokens::Token,
     },
-    types::{
-        compiler_errors::{CompilerError, SyntaxError},
+    parser::{
+        custom_error::parse_custom_errors, event::parse_events, function::parse_functions,
+        lib_implementation::parse_lib_implementations, r#enum::parse_enums,
+        r#struct::parse_structs, variable::parse_variables,
+    },
+    utils::types::{
         context::{TContextFn, TerminationTypeContext, VariantContext},
-        identifiers::{
-            custom_error::parse_custom_errors,
-            event::parse_events,
-            lib_implementation::parse_lib_implementations,
-            r#enum::parse_enums,
-            r#struct::{StructIdentifier, TStructIdentifier},
-            variable::parse_variables,
-        },
         line_descriptors::{LineDescriptions, TStringDescriptor, TTokenDescriptor},
-        token::{TTokenTrait, TVecExtension, Token},
     },
 };
+
+use super::{global::validate_identifier, process_file_contents::process_file_contents};
 
 pub async fn compile_source_code(args: Vec<String>) {
     let file_path = &args.last();
@@ -83,18 +81,14 @@ pub async fn compile_source_code(args: Vec<String>) {
                 }
 
                 if header_tokens.strip_spaces().is_empty() {
-                    CompilerError::SyntaxError(
-                        crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
-                    )
-                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                    CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 }
 
                 if header_tokens.strip_spaces().len() != 2 {
-                    CompilerError::SyntaxError(
-                        crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                            header_tokens.to_string().trim(),
-                        ),
-                    )
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                        header_tokens.to_string().trim(),
+                    ))
                     .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 } else {
                     if let Token::Identifier(identifier) =
@@ -109,28 +103,25 @@ pub async fn compile_source_code(args: Vec<String>) {
                         });
                         lib_identifier = identifier.to_owned();
                     } else {
-                        CompilerError::SyntaxError(
-                            crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                                &format!(
-                                    "Expecting identifier but found {}",
-                                    header_tokens.strip_spaces().last().unwrap().to_string()
-                                ),
-                            ),
-                        )
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "Expecting identifier but found {}",
+                            header_tokens.strip_spaces().last().unwrap().to_string()
+                        )))
                         .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                     }
                 }
             }
         }
 
-        let _ = StructIdentifier::parse_structs(structs);
+        let _ = parse_structs(structs);
         let _ = parse_enums(enums);
 
         let _errs = parse_custom_errors(errors);
         let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
         let _ret = parse_variables(vars);
-        // println!("{:#?}", _ret);
+        parse_functions(functions);
+        // println!("{:#?}", functions);
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
         //     structs, vars, enums, functions, errors, lib_implementations, lib_header

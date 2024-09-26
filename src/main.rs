@@ -2,9 +2,9 @@ use std::{
     env,
     time::{self, SystemTime},
 };
-mod mods;
 
-use mods::functions::controllers::sub_main::compile_source_code;
+use mods::utils::functions::sub_main::compile_source_code;
+mod mods;
 
 #[tokio::main]
 async fn main() {

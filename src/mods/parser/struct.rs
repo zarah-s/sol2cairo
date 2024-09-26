@@ -1,79 +1,21 @@
+use crate::mods::ast::mapping::{Mapping, MappingAST, MappingHeader};
+use crate::mods::ast::r#struct::{StructAST, StructHeader, StructType, StructVariant};
+use crate::mods::errors::error::{CompilerError, ErrType, SyntaxError};
+use crate::mods::utils::functions::global::validate_identifier;
+use crate::mods::utils::types::visibility::Visibility;
 use crate::mods::{
-    constants::constants::FILE_PATH,
-    functions::helpers::global::validate_identifier,
-    types::{
-        compiler_errors::{CompilerError, ErrType, SyntaxError},
-        identifiers::mapping::{process_mapping, Mapping},
-        line_descriptors::LineDescriptions,
-        token::{TStringExtension, TTokenTrait, TVecExtension, Token, Visibility},
-    },
+    constants::constants::FILE_PATH, utils::types::line_descriptors::LineDescriptions,
 };
 
-use super::mapping::{MappingHeader, MappingIdentifier};
+use crate::mods::parser::mapping::process_mapping;
 
-pub trait TStructIdentifier {
-    fn is_storage(&self) -> bool;
-    fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier>;
-}
+use crate::mods::lexer::{
+    lexer::{TStringExtension, TTokenTrait, TVecExtension},
+    tokens::Token,
+};
 
-#[derive(Debug)]
-struct StructHeader {
-    pub identifier: String,
-}
-
-#[derive(Debug)]
-pub struct StructIdentifier {
-    pub header: StructHeader,
-    pub line: String,
-    pub types: Vec<StructType>,
-}
-
-#[derive(Debug)]
-pub enum StructType {
-    Mapping(MappingIdentifier),
-    Variant(Variant),
-}
-
-#[derive(Debug)]
-pub struct Variant {
-    pub r#type: String,
-    pub name: String,
-    pub array_size: Option<String>,
-    pub is_array: bool,
-    pub payable: bool,
-}
-
-impl Variant {
-    pub fn new() -> Self {
-        Self {
-            r#type: String::new(),
-            name: String::new(),
-            array_size: None,
-            is_array: false,
-            payable: false,
-        }
-    }
-}
-
-impl TStructIdentifier for StructIdentifier {
-    fn is_storage(&self) -> bool {
-        for data in &self.types {
-            match data {
-                StructType::Mapping(_) => return true,
-                _ => {}
-            }
-        }
-
-        false
-    }
-
-    fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier> {
-        parse_structs(lexems)
-    }
-}
-
-fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier> {
-    let mut structs: Vec<StructIdentifier> = Vec::new();
+pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructAST> {
+    let mut structs: Vec<StructAST> = Vec::new();
     for lexem in lexems {
         let mut struct_types: Vec<StructType> = Vec::new();
         let mut struct_identifier = String::new();
@@ -122,36 +64,28 @@ fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructId
             }
 
             if header_tokens.strip_spaces().is_empty() {
-                CompilerError::SyntaxError(
-                    crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
-                )
-                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
             }
 
             if header_tokens.strip_spaces().len() != 2 {
-                CompilerError::SyntaxError(
-                    crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                        header_tokens.to_string().trim(),
-                    ),
-                )
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    header_tokens.to_string().trim(),
+                ))
                 .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
                     validate_identifier(&identifier).unwrap_or_else(|err| {
-                        CompilerError::SyntaxError(
-                            crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&err),
-                        )
-                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
+                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                     });
                     struct_identifier = identifier.to_owned();
                 } else {
-                    CompilerError::SyntaxError(
-                        crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&format!(
-                            "Expecting identifier but found {}",
-                            header_tokens.strip_spaces().last().unwrap().to_string()
-                        )),
-                    )
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Expecting identifier but found {}",
+                        header_tokens.strip_spaces().last().unwrap().to_string()
+                    )))
                     .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 }
             }
@@ -215,12 +149,11 @@ fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructId
                         }
                         Token::CloseBraces => {
                             if !combined.is_empty() {
-                                CompilerError::SyntaxError(
-                                    crate::mods::types::compiler_errors::SyntaxError::MissingToken(
-                                        ";",
-                                    ),
-                                )
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                                CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        lex.line,
+                                    )
                             }
                         }
 
@@ -231,7 +164,7 @@ fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructId
                 }
             }
         }
-        let struct_construct = StructIdentifier {
+        let struct_construct = StructAST {
             header: StructHeader {
                 identifier: struct_identifier,
             },
@@ -262,7 +195,7 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
                     ErrType::Syntax,
                 ));
             }
-            let mapping_construct = StructType::Mapping(MappingIdentifier {
+            let mapping_construct = StructType::Mapping(MappingAST {
                 header: mapping_header,
                 map: mapping,
             });
@@ -276,7 +209,7 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
         | Token::Address
         | Token::String
         | Token::Identifier(_) => {
-            let mut variant = Variant::new();
+            let mut variant = StructVariant::new();
             process_non_mapping_variant(combined, &mut variant)?;
 
             let variant_construct = StructType::Variant(variant);
@@ -300,7 +233,7 @@ enum Stage {
 }
 fn process_non_mapping_variant(
     combined: &Vec<Token>,
-    variant: &mut Variant,
+    variant: &mut StructVariant,
 ) -> Result<(), (String, ErrType)> {
     let mut is_array = false;
     let mut payable = false;
@@ -427,7 +360,7 @@ fn process_non_mapping_variant(
         }
     }
 
-    *variant = Variant {
+    *variant = StructVariant {
         is_array,
         name,
         array_size: size,

@@ -2,9 +2,12 @@ use std::env::VarError;
 
 use regex::Regex;
 
-use crate::mods::types::{
-    compiler_errors::ErrType,
-    token::{TTokenTrait, TVecExtension, Token},
+use crate::mods::{
+    errors::error::ErrType,
+    lexer::{
+        lexer::{TTokenTrait, TVecExtension},
+        tokens::Token,
+    },
 };
 
 pub fn extract_data_type_from_token(token: &Token) -> Option<&Token> {
