@@ -150,7 +150,6 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                     .position(|pred| *pred == Token::OpenSquareBracket);
 
                 if let Some(_bracket_index) = open_bracket_index {
-                    // println!("yes {:?}", combined);
                     /* PROCESS TYPE */
                     let mut backward_slice = &combined[.._bracket_index];
 

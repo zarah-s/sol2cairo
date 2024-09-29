@@ -149,14 +149,48 @@ pub fn parse_custom_errors(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Ve
                 let mut r#type = String::new();
                 let mut size: Option<String> = None;
                 let mut name: Option<String> = None;
+                let mut payable = false;
                 let open_bracket_index = combined
                     .iter()
                     .position(|pred| *pred == Token::OpenSquareBracket);
 
                 if let Some(_bracket_index) = open_bracket_index {
                     /* PROCESS TYPE */
-                    let backward_slice = &combined[.._bracket_index];
+                    let mut backward_slice = &combined[.._bracket_index];
 
+                    // CHECK PAYABLE
+                    let mut combined = combined.to_vec();
+                    let payable_check = combined.iter().position(|pred| *pred == Token::Payable);
+                    if let Some(payable_index) = payable_check {
+                        let left = &combined[..payable_index];
+                        let right = &combined[payable_index + 1..];
+                        if left.len() != 2 {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                "Unprocessible entity for event {}",
+                                combined.to_string()
+                            )))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+                        if left[0] != Token::Address {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "payable can only be specified for address types",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+
+                        if left[1] != Token::Space {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                "Unprocessible entity for event {}",
+                                combined.to_string()
+                            )))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+
+                        let new_combined = [left, right].concat();
+                        payable = true;
+                        combined = new_combined;
+                        backward_slice = &combined[.._bracket_index - 2];
+                    }
                     process_type(backward_slice, &mut r#type, &combined.to_vec()).unwrap_or_else(
                         |(msg, _)| {
                             CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
@@ -165,34 +199,47 @@ pub fn parse_custom_errors(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Ve
                             unreachable!()
                         },
                     );
-                    is_array = true;
-                    /* PROCESS ARRAY SIZE */
-                    let close_bracket_index = &combined[_bracket_index + 1..]
-                        .iter()
-                        .position(|pred| *pred == Token::CloseSquareBracket);
-                    if let Some(_close_bracket_index) = close_bracket_index {
-                        size =
-                            process_size(&combined.to_vec(), _bracket_index, *_close_bracket_index)
-                                .unwrap_or_else(|(msg, _)| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
 
-                                    unreachable!()
-                                });
-                    } else {
-                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    let mut iteration = 0;
+                    let mut open_context = 0;
+                    let mut _bracket_index = _bracket_index;
+                    if payable {
+                        _bracket_index = _bracket_index - 1;
+                    }
+
+                    is_array = true;
+
+                    for tkn in &combined[_bracket_index..] {
+                        match tkn {
+                            Token::OpenSquareBracket => open_context += 1,
+                            Token::CloseSquareBracket => {
+                                open_context -= 1;
+                                if open_context == 0 {
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+
+                        iteration += 1;
+                    }
+
+                    if open_context != 0 {
+                        CompilerError::SyntaxError(SyntaxError::MissingToken(&format!(
                             "] \"{}\"",
-                            combined.to_vec().to_string()
+                            combined.to_string()
                         )))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                     }
 
+                    /* PROCESS ARRAY SIZE */
+                    let _size = &combined[_bracket_index + 1..iteration + _bracket_index];
+                    if !_size.is_empty() {
+                        size = Some(_size.to_vec().to_string());
+                    }
+
                     /* PROCESS NAME */
-                    let name_definition = &combined[_bracket_index + 1..]
-                        [close_bracket_index.unwrap() + 1..]
+                    let name_definition = &combined[_bracket_index + 1..][iteration + 1..]
                         .to_vec()
                         .strip_spaces();
                     if !name_definition.is_empty() {
@@ -229,7 +276,6 @@ pub fn parse_custom_errors(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Ve
                             let name_definition = &combined[3..].to_vec().strip_spaces();
                             if !name_definition.is_empty() {
                                 let mut _name = String::new();
-
                                 process_name(
                                     &[name_definition.to_vec(), vec![Token::SemiColon]].concat(),
                                     &mut _name,
@@ -257,26 +303,46 @@ pub fn parse_custom_errors(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Ve
 
                                     unreachable!()
                                 });
-                            let name_definition = &combined[1..].to_vec().strip_spaces();
+
+                            let mut name_definition = combined[1..].to_vec().strip_spaces();
+
                             if !name_definition.is_empty() {
                                 let mut _name = String::new();
-
-                                process_name(
-                                    &[name_definition.to_vec(), vec![Token::SemiColon]].concat(),
-                                    &mut _name,
-                                    &combined.to_vec(),
-                                )
-                                .unwrap_or_else(|(msg, _)| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
+                                if let Token::Payable = name_definition[0] {
+                                    if combined[0] != Token::Address {
+                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                            "payable can only be specified for address types",
+                                        ))
                                         .throw_with_file_info(
                                             &get_env_vars(FILE_PATH).unwrap(),
                                             line,
                                         );
+                                    }
+                                    payable = true;
+                                    name_definition.remove(0);
+                                }
+                                if !name_definition.is_empty() {
+                                    process_name(
+                                        &[name_definition.to_vec(), vec![Token::SemiColon]]
+                                            .concat(),
+                                        &mut _name,
+                                        &combined.to_vec(),
+                                    )
+                                    .unwrap_or_else(
+                                        |(msg, _)| {
+                                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                                &msg,
+                                            ))
+                                            .throw_with_file_info(
+                                                &get_env_vars(FILE_PATH).unwrap(),
+                                                line,
+                                            );
 
-                                    unreachable!()
-                                });
-
-                                name = Some(_name);
+                                            unreachable!()
+                                        },
+                                    );
+                                    name = Some(_name);
+                                }
                             }
                         }
                     } else {
@@ -313,6 +379,7 @@ pub fn parse_custom_errors(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Ve
                     name,
                     array_size: size,
                     r#type,
+                    payable,
                 };
                 arguments.push(arg);
             }

@@ -153,7 +153,7 @@ contract Yds is OI{
 
 library Lb{ sld oi;
     using Oi for uint[];
-    error Lib_ERROR(Oi.sdf[(1000*23)] chii,Shit,uint256,_);
+    error Lib_ERROR(Oi.sdf[(1000*23)] chii,Shit,uint256,address payable[john[asd]] oiii);
 
     function dd() 
     {}

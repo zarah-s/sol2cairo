@@ -4,6 +4,7 @@ pub struct Arg {
     pub name: Option<String>,
     pub array_size: Option<String>,
     pub is_array: bool,
+    pub payable: bool,
 }
 
 #[derive(Debug)]
