@@ -25,7 +25,7 @@ function ddd(uint osad) external {
      bool cd = (((((true)))));
 bytes hexs = hex"adfadfad";
      sdfd[] public constant jane=[1,2,3,4,5][get_random().clone()];
-// event Transfer(uind.asd[(((100)))] indexed,address indexed);
+event Transfer(uind.asd[(((100)))] indexed,address payable indexed );
 sd[2000_000] yo = new Toes[]((2000_000).add()).com();
  Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 //  function() internal  view returns(address) selectedFunction;

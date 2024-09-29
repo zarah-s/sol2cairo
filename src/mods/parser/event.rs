@@ -2,6 +2,7 @@ use crate::mods::{
     ast::event::{Arg, EventAST, EventVariants},
     constants::constants::FILE_PATH,
     errors::error::{CompilerError, SyntaxError},
+    lexer::lexer::TStringExtension,
     utils::{
         functions::global::{
             get_env_vars, process_name, process_size, process_type, validate_identifier,
@@ -143,6 +144,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                 let mut size: Option<String> = None;
                 let mut name: Option<String> = None;
                 let mut indexed = false;
+                let mut payable = false;
                 let open_bracket_index = combined
                     .iter()
                     .position(|pred| *pred == Token::OpenSquareBracket);
@@ -197,6 +199,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                         }
                         if !name_definition.is_empty() {
                             let mut _name = String::new();
+
                             process_name(
                                 &[name_definition.to_owned(), vec![Token::SemiColon]].concat(),
                                 &mut _name,
@@ -275,6 +278,28 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                                     indexed = true;
                                     name_definition.remove(0);
                                 }
+
+                                if name_definition[0] == Token::Payable {
+                                    if r#type.tokenize() != Token::Address {
+                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                            "payable can only be specified for address types",
+                                        ))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+                                    }
+
+                                    payable = true;
+                                    name_definition.remove(0);
+
+                                    if !name_definition.is_empty()
+                                        && name_definition[0] == Token::Indexed
+                                    {
+                                        indexed = true;
+                                        name_definition.remove(0);
+                                    }
+                                }
                                 if !name_definition.is_empty() {
                                     let mut _name = String::new();
 
@@ -347,6 +372,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                         name,
                         array_size: size,
                         r#type,
+                        payable,
                     },
                 };
                 variants.push(arg);
