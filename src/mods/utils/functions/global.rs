@@ -66,6 +66,7 @@ pub fn process_type(
     r#type: &mut String,
     combined: &Vec<Token>,
 ) -> Result<(), (String, ErrType)> {
+    let slice = slice.to_vec().strip_spaces();
     if slice.len() == 3 {
         if slice.contains(&Token::Dot) {
             for slc in slice {
@@ -138,7 +139,7 @@ pub fn process_name(
     } else {
         // println!("{:?}", name_definition);
         return Err((
-            format!("Invalid variantcc declaration \"{}\"", combined.to_string()),
+            format!("Invalid variant declaration \"{}\"", combined.to_string()),
             ErrType::Syntax,
         ));
     }

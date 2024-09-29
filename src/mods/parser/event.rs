@@ -150,10 +150,45 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                     .position(|pred| *pred == Token::OpenSquareBracket);
 
                 if let Some(_bracket_index) = open_bracket_index {
+                    // println!("yes {:?}", combined);
                     /* PROCESS TYPE */
-                    let backward_slice = &combined[.._bracket_index];
+                    let mut backward_slice = &combined[.._bracket_index];
 
-                    process_type(backward_slice, &mut r#type, &combined.to_vec()).unwrap_or_else(
+                    // CHECK PAYABLE
+                    let mut combined = combined.to_vec();
+                    let payable_check = combined.iter().position(|pred| *pred == Token::Payable);
+                    if let Some(payable_index) = payable_check {
+                        let left = &combined[..payable_index];
+                        let right = &combined[payable_index + 1..];
+                        if left.len() != 2 {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                "Unprocessible entity for event {}",
+                                combined.to_string()
+                            )))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+                        if left[0] != Token::Address {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "payable can only be specified for address types",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+
+                        if left[1] != Token::Space {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                                "Unprocessible entity for event {}",
+                                combined.to_string()
+                            )))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+
+                        let new_combined = [left, right].concat();
+                        payable = true;
+                        combined = new_combined;
+                        backward_slice = &combined[.._bracket_index - 2];
+                    }
+
+                    process_type(backward_slice, &mut r#type, &combined).unwrap_or_else(
                         |(msg, _)| {
                             CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
                                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
@@ -161,34 +196,45 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                             unreachable!()
                         },
                     );
-                    is_array = true;
-                    /* PROCESS ARRAY SIZE */
-                    let close_bracket_index = &combined[_bracket_index + 1..]
-                        .iter()
-                        .position(|pred| *pred == Token::CloseSquareBracket);
-                    if let Some(_close_bracket_index) = close_bracket_index {
-                        size =
-                            process_size(&combined.to_vec(), _bracket_index, *_close_bracket_index)
-                                .unwrap_or_else(|(msg, _)| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
 
-                                    unreachable!()
-                                });
-                    } else {
-                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    let mut iteration = 0;
+                    let mut open_context = 0;
+                    let mut _bracket_index = _bracket_index;
+                    if payable {
+                        _bracket_index = _bracket_index - 1;
+                    }
+                    is_array = true;
+
+                    for tkn in &combined[_bracket_index..] {
+                        match tkn {
+                            Token::OpenSquareBracket => open_context += 1,
+                            Token::CloseSquareBracket => {
+                                open_context -= 1;
+                                if open_context == 0 {
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+
+                        iteration += 1;
+                    }
+
+                    if open_context != 0 {
+                        CompilerError::SyntaxError(SyntaxError::MissingToken(&format!(
                             "] \"{}\"",
-                            combined.to_vec().to_string()
+                            combined.to_string()
                         )))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                     }
 
+                    let _size = &combined[_bracket_index + 1..iteration + _bracket_index];
+                    if !_size.is_empty() {
+                        size = Some(_size.to_vec().to_string());
+                    }
+
                     /* PROCESS NAME */
-                    let mut name_definition = combined[_bracket_index + 1..]
-                        [close_bracket_index.unwrap() + 1..]
+                    let mut name_definition = combined[_bracket_index + 1..][iteration + 1..]
                         .to_vec()
                         .strip_spaces();
 
@@ -203,7 +249,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                             process_name(
                                 &[name_definition.to_owned(), vec![Token::SemiColon]].concat(),
                                 &mut _name,
-                                &combined.to_vec(),
+                                &combined,
                             )
                             .unwrap_or_else(|(msg, _)| {
                                 CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
@@ -280,6 +326,15 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                                 }
 
                                 if name_definition[0] == Token::Payable {
+                                    if indexed {
+                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                            "Expected identifier but got payable",
+                                        ))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+                                    }
                                     if r#type.tokenize() != Token::Address {
                                         CompilerError::SyntaxError(SyntaxError::SyntaxError(
                                             "payable can only be specified for address types",
