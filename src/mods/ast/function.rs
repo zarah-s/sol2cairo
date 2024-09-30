@@ -13,12 +13,12 @@ pub enum FunctionHeaderState {
     None,
 }
 
-#[derive(Debug)]
-pub struct ReturnType {
-    pub type_: String,
-    pub location: Option<Token>,
-    pub size: Option<String>,
-    pub is_array: bool,
+pub enum FunctionArgState {
+    None,
+    Type,
+    Location,
+    Array,
+    Name,
 }
 
 #[derive(Debug)]
@@ -29,8 +29,8 @@ pub struct ModifierCall {
 
 #[derive(Debug)]
 pub struct Argument {
-    pub type_: String,
-    pub name_: String,
+    pub r#type: String,
+    pub name: Option<String>,
     pub location: Option<Token>,
     pub size: Option<String>,
     pub is_array: bool,
@@ -48,11 +48,11 @@ pub enum FunctionType {
 pub struct FunctionHeader {
     pub name: String,
     pub gasless: bool,
-    pub mutability: Token,
-    pub visibility: Token,
-    pub returns: Option<Vec<ReturnType>>,
-    pub r#override: bool,
-    pub r#virtual: bool,
+    pub mutability: Option<Token>,
+    pub visibility: Option<Token>,
+    pub returns: Option<Vec<Argument>>,
+    pub inheritance: Option<Token>,
+
     pub arguments: Option<Vec<Argument>>,
     pub modifiers: Option<Vec<ModifierCall>>,
 }
@@ -63,12 +63,11 @@ impl FunctionHeader {
             arguments: None,
             gasless: false,
             modifiers: None,
-            mutability: Token::Space,
+            mutability: None,
             name: String::new(),
-            r#override: false,
+            inheritance: None,
             returns: None,
-            r#virtual: false,
-            visibility: Token::Space,
+            visibility: None,
         }
     }
 }

@@ -6,7 +6,7 @@ library Name {
         mapping (sd => mapping (address => uint) )  name;
         mapping (address => uint) name;
  address payable[] ddd;
-function ddd(uint osad) external {
+function ddd(uint[] storage osad,address payable owner) external Only(msg.sender) another  gasless returns(address memory payable[10] user,Layout.Pool memory pool)  {
         bytes public buffer = new bytes(2);
 
 }
