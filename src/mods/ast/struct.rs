@@ -1,10 +1,7 @@
-// use crate::mods::{lexer::tokens::Token, utils::types::line_descriptors::LineDescriptions};
-
 use super::mapping::MappingAST;
 
 pub trait TStructIdentifier {
     fn is_storage(&self) -> bool;
-    // fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier>;
 }
 
 #[derive(Debug)]
@@ -57,8 +54,4 @@ impl TStructIdentifier for StructAST {
 
         false
     }
-
-    // fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<StructIdentifier> {
-    //     parse_structs(lexems)
-    // }
 }

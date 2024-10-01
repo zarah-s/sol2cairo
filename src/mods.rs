@@ -9,12 +9,14 @@ pub mod utils {
         pub mod line_descriptors;
         pub mod mutability;
         pub mod value;
+        pub mod variant;
         pub mod visibility;
     }
     pub mod functions {
         pub mod global;
         pub mod process_file_contents;
         pub mod sub_main;
+        pub mod variant;
     }
 }
 

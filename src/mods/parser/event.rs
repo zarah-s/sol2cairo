@@ -1,13 +1,13 @@
 use crate::mods::{
-    ast::event::{Arg, EventAST, EventVariants},
+    ast::event::EventAST,
     constants::constants::FILE_PATH,
     errors::error::{CompilerError, SyntaxError},
-    lexer::lexer::TStringExtension,
     utils::{
-        functions::global::{
-            get_env_vars, process_name, process_size, process_type, validate_identifier,
+        functions::global::{get_env_vars, validate_identifier},
+        types::{
+            line_descriptors::LineDescriptions,
+            variant::{TVariant, Variant},
         },
-        types::line_descriptors::LineDescriptions,
     },
 };
 
@@ -95,7 +95,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
         }
 
         {
-            let mut variants: Vec<EventVariants> = Vec::new();
+            let mut variants: Vec<Variant> = Vec::new();
             let mut skipped_count = 0;
             let mut raw_args = Vec::new();
             let line = lexem.first().unwrap().line;
@@ -139,297 +139,16 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                 .collect::<Vec<_>>();
 
             for combined in stripped {
-                let mut is_array = false;
-                let mut r#type = String::new();
-                let mut size: Option<String> = None;
-                let mut name: Option<String> = None;
-                let mut indexed = false;
-                let mut payable = false;
-                let open_bracket_index = combined
-                    .iter()
-                    .position(|pred| *pred == Token::OpenSquareBracket);
-
-                if let Some(_bracket_index) = open_bracket_index {
-                    /* PROCESS TYPE */
-                    let mut backward_slice = &combined[.._bracket_index];
-
-                    // CHECK PAYABLE
-                    let mut combined = combined.to_vec();
-                    let payable_check = combined.iter().position(|pred| *pred == Token::Payable);
-                    if let Some(payable_index) = payable_check {
-                        let left = &combined[..payable_index];
-                        let right = &combined[payable_index + 1..];
-                        if left.len() != 2 {
-                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                                "Unprocessible entity for event {}",
-                                combined.to_string()
-                            )))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                        }
-                        if left[0] != Token::Address {
-                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                "payable can only be specified for address types",
-                            ))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                        }
-
-                        if left[1] != Token::Space {
-                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                                "Unprocessible entity for event {}",
-                                combined.to_string()
-                            )))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                        }
-
-                        let new_combined = [left, right].concat();
-                        payable = true;
-                        combined = new_combined;
-                        backward_slice = &combined[.._bracket_index - 2];
-                    }
-
-                    process_type(backward_slice, &mut r#type, &combined).unwrap_or_else(
-                        |(msg, _)| {
-                            CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
-                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-
-                            unreachable!()
-                        },
-                    );
-
-                    let mut iteration = 0;
-                    let mut open_context = 0;
-                    let mut _bracket_index = _bracket_index;
-                    if payable {
-                        _bracket_index = _bracket_index - 1;
-                    }
-                    is_array = true;
-
-                    for tkn in &combined[_bracket_index..] {
-                        match tkn {
-                            Token::OpenSquareBracket => open_context += 1,
-                            Token::CloseSquareBracket => {
-                                open_context -= 1;
-                                if open_context == 0 {
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-
-                        iteration += 1;
-                    }
-
-                    if open_context != 0 {
-                        CompilerError::SyntaxError(SyntaxError::MissingToken(&format!(
-                            "] \"{}\"",
-                            combined.to_string()
-                        )))
-                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                    }
-
-                    let _size = &combined[_bracket_index + 1..iteration + _bracket_index];
-                    if !_size.is_empty() {
-                        size = Some(_size.to_vec().to_string());
-                    }
-
-                    /* PROCESS NAME */
-                    let mut name_definition = combined[_bracket_index + 1..][iteration + 1..]
-                        .to_vec()
-                        .strip_spaces();
-
-                    if !name_definition.is_empty() {
-                        if *name_definition.first().unwrap() == Token::Indexed {
-                            indexed = true;
-                            name_definition.remove(0);
-                        }
-                        if !name_definition.is_empty() {
-                            let mut _name = String::new();
-
-                            process_name(
-                                &[name_definition.to_owned(), vec![Token::SemiColon]].concat(),
-                                &mut _name,
-                                &combined,
-                            )
-                            .unwrap_or_else(|(msg, _)| {
-                                CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
-                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-
-                                unreachable!()
-                            });
-
-                            name = Some(_name);
-                        }
-                    }
-                } else {
-                    if let Some(_) = combined.to_vec().strip_spaces().get(1) {
-                        if let Token::Dot = combined.to_vec().strip_spaces()[1] {
-                            let slice = &combined[..3];
-                            process_type(slice, &mut r#type, &combined.to_vec()).unwrap_or_else(
-                                |(msg, _)| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-
-                                    unreachable!()
-                                },
-                            );
-                            let mut name_definition = combined[3..].to_vec().strip_spaces();
-                            if !name_definition.is_empty() {
-                                if *name_definition.first().unwrap() == Token::Indexed {
-                                    indexed = true;
-                                    name_definition.remove(0);
-                                }
-                                if !name_definition.is_empty() {
-                                    let mut _name = String::new();
-
-                                    process_name(
-                                        &[name_definition.to_vec(), vec![Token::SemiColon]]
-                                            .concat(),
-                                        &mut _name,
-                                        &combined.to_vec(),
-                                    )
-                                    .unwrap_or_else(
-                                        |(msg, _)| {
-                                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                                &msg,
-                                            ))
-                                            .throw_with_file_info(
-                                                &get_env_vars(FILE_PATH).unwrap(),
-                                                line,
-                                            );
-
-                                            unreachable!()
-                                        },
-                                    );
-                                    name = Some(_name);
-                                }
-                            }
-                        } else {
-                            process_type(&combined[..1], &mut r#type, &combined.to_vec())
-                                .unwrap_or_else(|(msg, _)| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-
-                                    unreachable!()
-                                });
-                            let mut name_definition = combined[1..].to_vec().strip_spaces();
-                            if !name_definition.is_empty() {
-                                if *name_definition.first().unwrap() == Token::Indexed {
-                                    indexed = true;
-                                    name_definition.remove(0);
-                                }
-
-                                if name_definition[0] == Token::Payable {
-                                    if indexed {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            "Expected identifier but got payable",
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
-                                    if r#type.tokenize() != Token::Address {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            "payable can only be specified for address types",
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
-
-                                    payable = true;
-                                    name_definition.remove(0);
-
-                                    if !name_definition.is_empty()
-                                        && name_definition[0] == Token::Indexed
-                                    {
-                                        indexed = true;
-                                        name_definition.remove(0);
-                                    }
-                                }
-                                if !name_definition.is_empty() {
-                                    let mut _name = String::new();
-
-                                    process_name(
-                                        &[name_definition.to_vec(), vec![Token::SemiColon]]
-                                            .concat(),
-                                        &mut _name,
-                                        &combined.to_vec(),
-                                    )
-                                    .unwrap_or_else(
-                                        |(msg, _)| {
-                                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                                &msg,
-                                            ))
-                                            .throw_with_file_info(
-                                                &get_env_vars(FILE_PATH).unwrap(),
-                                                line,
-                                            );
-
-                                            unreachable!()
-                                        },
-                                    );
-
-                                    name = Some(_name);
-                                }
-                            }
-                        }
-                    } else {
-                        process_type(&combined[..1], &mut r#type, &combined.to_vec())
-                            .unwrap_or_else(|(msg, _)| {
-                                CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
-                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-
-                                unreachable!()
-                            });
-                        let mut name_definition = combined[1..].to_vec().strip_spaces();
-                        if !name_definition.is_empty() {
-                            if *name_definition.first().unwrap() == Token::Indexed {
-                                indexed = true;
-                                name_definition.remove(0);
-                            }
-                            if !name_definition.is_empty() {
-                                let mut _name = String::new();
-
-                                process_name(
-                                    &[name_definition.to_vec(), vec![Token::SemiColon]].concat(),
-                                    &mut _name,
-                                    &combined.to_vec(),
-                                )
-                                .unwrap_or_else(|(msg, _)| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&msg))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-
-                                    unreachable!()
-                                });
-
-                                name = Some(_name);
-                            }
-                        }
-                    }
+                let variant = Variant::process_args(combined);
+                if variant.is_err() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "{} {}",
+                        variant.as_ref().err().unwrap(),
+                        combined.to_vec().to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
                 }
-
-                let arg = EventVariants {
-                    indexed,
-                    variant: Arg {
-                        is_array,
-                        name,
-                        array_size: size,
-                        r#type,
-                        payable,
-                    },
-                };
-                variants.push(arg);
+                variants.push(variant.unwrap());
             }
 
             let event_construct = EventAST {

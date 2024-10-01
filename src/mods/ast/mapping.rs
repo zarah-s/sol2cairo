@@ -1,4 +1,7 @@
-use crate::mods::{errors::error::ErrType, utils::types::visibility::Visibility};
+use crate::mods::{
+    errors::error::ErrType,
+    utils::types::{variant::Variant, visibility::Visibility},
+};
 
 #[derive(Debug)]
 pub enum MappingState {
@@ -32,18 +35,11 @@ pub struct MappingAST {
     pub header: MappingHeader,
     pub map: Mapping,
 }
-#[derive(Debug)]
-pub struct MappingReturnValue {
-    pub r#type: String,
-    pub array_size: Option<String>,
-    pub is_array: bool,
-    pub payable: bool,
-}
 
 #[derive(Debug)]
 pub enum MappingValue {
     Mapping(Box<Mapping>),
-    Raw(MappingReturnValue),
+    Raw(Variant),
 }
 
 #[derive(Debug)]
@@ -61,7 +57,7 @@ impl Mapping {
         }
     }
 
-    pub fn get_return_type(&self) -> Option<&MappingReturnValue> {
+    pub fn get_return_type(&self) -> Option<&Variant> {
         if let Some(ref _val) = self.value {
             match _val {
                 MappingValue::Mapping(_map) => _map.get_return_type(),
@@ -104,22 +100,5 @@ impl Mapping {
         }
 
         Ok(())
-    }
-
-    pub fn update_payable_state(&mut self, payable: bool) {
-        match &mut self.value {
-            Some(_val) => match _val {
-                MappingValue::Raw(_raw) => {
-                    _raw.payable = payable;
-                }
-                MappingValue::Mapping(_map) => {
-                    _map.update_payable_state(payable);
-                }
-            },
-
-            _ => {
-                // TODO: NOTHING
-            }
-        }
     }
 }

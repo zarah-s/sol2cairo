@@ -1,4 +1,4 @@
-use crate::mods::lexer::tokens::Token;
+use crate::mods::{lexer::tokens::Token, utils::types::variant::Variant};
 
 pub enum FunctionHeaderState {
     Keyword,
@@ -13,28 +13,10 @@ pub enum FunctionHeaderState {
     None,
 }
 
-pub enum FunctionArgState {
-    None,
-    Type,
-    Location,
-    Array,
-    Name,
-}
-
 #[derive(Debug)]
 pub struct ModifierCall {
     pub identifier: String,
     pub arguments: Option<Vec<String>>,
-}
-
-#[derive(Debug)]
-pub struct Argument {
-    pub r#type: String,
-    pub name: Option<String>,
-    pub location: Option<Token>,
-    pub size: Option<String>,
-    pub is_array: bool,
-    pub payable_address: bool,
 }
 
 #[derive(Debug)]
@@ -46,14 +28,14 @@ pub enum FunctionType {
 
 #[derive(Debug)]
 pub struct FunctionHeader {
-    pub name: String,
+    pub name: Option<String>,
     pub gasless: bool,
     pub mutability: Option<Token>,
     pub visibility: Option<Token>,
-    pub returns: Option<Vec<Argument>>,
+    pub returns: Option<Vec<Variant>>,
     pub inheritance: Option<Token>,
 
-    pub arguments: Option<Vec<Argument>>,
+    pub arguments: Option<Vec<Variant>>,
     pub modifiers: Option<Vec<ModifierCall>>,
 }
 
@@ -64,7 +46,7 @@ impl FunctionHeader {
             gasless: false,
             modifiers: None,
             mutability: None,
-            name: String::new(),
+            name: None,
             inheritance: None,
             returns: None,
             visibility: None,

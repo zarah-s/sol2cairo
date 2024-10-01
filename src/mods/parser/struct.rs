@@ -215,8 +215,7 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
             let variant_construct = StructType::Variant(variant);
             return Ok(variant_construct);
         }
-        _other => {
-            // println!("{:?}", _other);
+        _ => {
             return Err((
                 format!("Invalid variant declaration \"{}\"", combined.to_string()),
                 ErrType::Syntax,

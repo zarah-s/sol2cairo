@@ -255,23 +255,17 @@ pub enum Value {
     FunctionValue(FunctionValue),
     VariantValue(VariantValue),
     FunctionPTRInvocation(FunctionPTRInvocation),
-    // StructValue(StructValue),
     ExpressionValue(ExpressionValue),
     KeywordValue(KeywordValue),
     PayableValue(PayableValue),
     UnitValue(String, Token),
-    // StructOrFunctionValue(FunctionValue),
-    // LibOrStructOrpub EnumValue(VariantValue),
-    // MappingValue(VariantValue),
-    // GlobalVarValue(VariantValue),
+
     IdentifierValue(IdentifierValue),
     Context {
         value: Box<Value>,
         then: Option<Box<Value>>,
     },
-    // Contractvalue(Contractvalue),
     InstanceValue(InstanceValue),
-    // NestedValue(NestedValue),
     None,
 }
 

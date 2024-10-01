@@ -113,7 +113,7 @@ pub async fn compile_source_code(args: Vec<String>) {
             }
         }
 
-        let _ = parse_structs(structs);
+        let _structs = parse_structs(structs);
         let _ = parse_enums(enums);
 
         let _errs = parse_custom_errors(errors);
@@ -121,7 +121,7 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _ = parse_lib_implementations(lib_implementations);
         let _ret = parse_variables(vars);
         parse_functions(functions);
-        // println!("{:#?}", _errs);
+        // println!("{:#?}", _structs);
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
         //     structs, vars, enums, functions, errors, lib_implementations, lib_header

@@ -1,21 +1,8 @@
-#[derive(Debug)]
-pub struct Arg {
-    pub r#type: String,
-    pub name: Option<String>,
-    pub array_size: Option<String>,
-    pub is_array: bool,
-    pub payable: bool,
-}
-
-#[derive(Debug)]
-pub struct EventVariants {
-    pub indexed: bool,
-    pub variant: Arg,
-}
+use crate::mods::utils::types::variant::Variant;
 
 #[derive(Debug)]
 pub struct EventAST {
     pub line: String,
     pub identifier: String,
-    pub variants: Vec<EventVariants>,
+    pub variants: Vec<Variant>,
 }
