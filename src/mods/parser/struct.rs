@@ -1,7 +1,8 @@
 use crate::mods::ast::mapping::{Mapping, MappingAST, MappingHeader};
-use crate::mods::ast::r#struct::{StructAST, StructHeader, StructType, StructVariant};
+use crate::mods::ast::r#struct::{StructAST, StructHeader, StructType};
 use crate::mods::errors::error::{CompilerError, ErrType, SyntaxError};
 use crate::mods::utils::functions::global::validate_identifier;
+use crate::mods::utils::types::variant::{TVariant, Variant};
 use crate::mods::utils::types::visibility::Visibility;
 use crate::mods::{
     constants::constants::FILE_PATH, utils::types::line_descriptors::LineDescriptions,
@@ -10,7 +11,7 @@ use crate::mods::{
 use crate::mods::parser::mapping::process_mapping;
 
 use crate::mods::lexer::{
-    lexer::{TStringExtension, TTokenTrait, TVecExtension},
+    lexer::{TTokenTrait, TVecExtension},
     tokens::Token,
 };
 
@@ -164,6 +165,7 @@ pub fn parse_structs(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Stru
                 }
             }
         }
+
         let struct_construct = StructAST {
             header: StructHeader {
                 identifier: struct_identifier,
@@ -209,10 +211,19 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
         | Token::Address
         | Token::String
         | Token::Identifier(_) => {
-            let mut variant = StructVariant::new();
-            process_non_mapping_variant(combined, &mut variant)?;
+            let variant = Variant::process_args(&combined[..combined.len() - 1]);
+            if variant.is_err() {
+                return Err((
+                    format!(
+                        "{} {}",
+                        variant.err().unwrap(),
+                        combined.to_vec().to_string()
+                    ),
+                    ErrType::Syntax,
+                ));
+            }
 
-            let variant_construct = StructType::Variant(variant);
+            let variant_construct = StructType::Variant(variant.unwrap());
             return Ok(variant_construct);
         }
         _ => {
@@ -222,150 +233,4 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
             ));
         }
     }
-}
-
-enum Stage {
-    TypeDeclaration,
-    Name,
-    Dot,
-    None,
-}
-fn process_non_mapping_variant(
-    combined: &Vec<Token>,
-    variant: &mut StructVariant,
-) -> Result<(), (String, ErrType)> {
-    let mut is_array = false;
-    let mut payable = false;
-    let mut r#type = String::new();
-    let mut size: Option<String> = None;
-    let mut name = String::new();
-    let mut stage = Stage::None;
-    let stripped_spaces = combined.strip_spaces();
-    for (index, tkn) in stripped_spaces.iter().enumerate() {
-        match tkn {
-            Token::Identifier(_identifier) => match stage {
-                Stage::None | Stage::Dot => {
-                    r#type.push_str(&tkn.to_string());
-                    stage = Stage::TypeDeclaration;
-                }
-
-                Stage::TypeDeclaration => {
-                    name.push_str(&_identifier);
-                    stage = Stage::Name;
-                }
-                _ => {
-                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                }
-            },
-
-            Token::SemiColon => match stage {
-                Stage::Name => {}
-                _ => {
-                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                }
-            },
-
-            Token::Uint(_)
-            | Token::Int(_)
-            | Token::Bool
-            | Token::Bytes(_)
-            | Token::Address
-            | Token::String => {
-                if let Stage::None = stage {
-                    r#type.push_str(&tkn.to_string());
-                    stage = Stage::TypeDeclaration;
-                } else {
-                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                }
-            }
-            Token::Dot => {
-                if let Stage::TypeDeclaration = stage {
-                    r#type.push_str(&tkn.to_string());
-                    stage = Stage::Dot;
-                } else {
-                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                }
-            }
-
-            Token::OpenSquareBracket => {
-                if let Stage::TypeDeclaration = stage {
-                    is_array = true;
-                    let mut open_contex = 0;
-                    let mut iteration = 0;
-                    for _strip in &stripped_spaces[index..] {
-                        match _strip {
-                            Token::OpenSquareBracket => {
-                                open_contex += 1;
-                            }
-                            Token::CloseSquareBracket => {
-                                open_contex -= 1;
-                                if open_contex == 0 {
-                                    break;
-                                }
-                            }
-                            _ => {}
-                        }
-                        iteration += 1;
-                    }
-                    if open_contex != 0 {
-                        return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                    }
-                    let raw_size = &stripped_spaces[index + 1..index + iteration];
-                    if !raw_size.is_empty() {
-                        size = Some(raw_size.to_vec().to_string());
-                    }
-                    if stripped_spaces.len() < index + iteration + 1 {
-                        return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                    }
-                    let raw_name = &stripped_spaces[index + iteration + 1..];
-                    if raw_name.len() != 2 {
-                        return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                    } else {
-                        if let Token::Identifier(_name) = &raw_name[0] {
-                            validate_identifier(_name).unwrap();
-                            name = _name.to_string()
-                        } else {
-                            return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                        }
-
-                        if raw_name[1] != Token::SemiColon {
-                            return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                        }
-                    }
-
-                    break;
-                } else {
-                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                }
-            }
-
-            Token::Payable => {
-                if let Stage::TypeDeclaration = stage {
-                    if let Token::Address = r#type.tokenize() {
-                        payable = true;
-                    } else {
-                        return Err((
-                            "Cannot declare payable for non-address type".to_string(),
-                            ErrType::Syntax,
-                        ));
-                    }
-                } else {
-                    return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-                }
-            }
-            _ => {
-                return Err(("Uprocessible entity".to_string(), ErrType::Syntax));
-            }
-        }
-    }
-
-    *variant = StructVariant {
-        is_array,
-        name,
-        array_size: size,
-        r#type,
-        payable,
-    };
-
-    Ok(())
 }

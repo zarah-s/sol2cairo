@@ -12,6 +12,7 @@ pub enum Token {
     QMark,
     Colon,
     Abstract,
+    Anonymous,
     Emit,
     Call,
     Import,

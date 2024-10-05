@@ -25,7 +25,7 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
      bool cd = (((((true)))));
 bytes hexs = hex"adfadfad";
      sdfd[] public constant jane=[1,2,3,4,5][get_random().clone()];
-event Transfer(uind.asd[(((100)))] indexed,address payable[j[sdsd]] indexed );
+event Transfer(uind.asd[(((100)))] indexed,address payable[j[sdsd]] indexed ) anonymous;
 sd[2000_000] yo = new Toes[]((2000_000).add()).com();
  Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 //  function() internal  view returns(address) selectedFunction;
@@ -59,6 +59,7 @@ sd[2000_000] yo = new Toes[]((2000_000).add()).com();
         mapping(uint => mapping(      Types.Slot =>       address payable[]    )) accessory;
         mapping(address => mapping(uint256 => mapping(uint => Types.Token[jj[1]]))) minted;
     }
+
 
     struct No_2sd {
         lib.dsd[200e18*2/4-1+8] name;

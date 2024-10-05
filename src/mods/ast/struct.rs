@@ -1,3 +1,5 @@
+use crate::mods::utils::types::variant::Variant;
+
 use super::mapping::MappingAST;
 
 pub trait TStructIdentifier {
@@ -19,28 +21,7 @@ pub struct StructAST {
 #[derive(Debug)]
 pub enum StructType {
     Mapping(MappingAST),
-    Variant(StructVariant),
-}
-
-#[derive(Debug)]
-pub struct StructVariant {
-    pub r#type: String,
-    pub name: String,
-    pub array_size: Option<String>,
-    pub is_array: bool,
-    pub payable: bool,
-}
-
-impl StructVariant {
-    pub fn new() -> Self {
-        Self {
-            r#type: String::new(),
-            name: String::new(),
-            array_size: None,
-            is_array: false,
-            payable: false,
-        }
-    }
+    Variant(Variant),
 }
 
 impl TStructIdentifier for StructAST {

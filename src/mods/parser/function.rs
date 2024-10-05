@@ -34,12 +34,13 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
                 }
             }
 
-            parse_function_header(function_header, line);
+            let header = parse_function_header(function_header, line);
+            // println!("{:#?}", header);
         }
     }
 }
 
-fn parse_function_header(header_tokens: Vec<Token>, line: i32) {
+fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader {
     let header_tokens = header_tokens.strip_spaces();
     if header_tokens[0] != Token::Function {
         CompilerError::SyntaxError(SyntaxError::SyntaxError(
@@ -144,12 +145,22 @@ fn parse_function_header(header_tokens: Vec<Token>, line: i32) {
                                             .split(|pred| *pred == Token::Coma)
                                             .collect::<Vec<_>>();
 
-                                        for split in splitted {
+                                        for (index, split) in splitted.iter().enumerate() {
                                             if split.is_empty() {
-                                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                                    "Unexpected trailing comma in parameter list",
-                                                ))
-                                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                                if index == splitted.len() - 1 {
+                                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                                        "Unexpected trailing comma in parameter list",
+                                                    ))
+                                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                                } else {
+                                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                                        "Unprocessible entity for function declaration",
+                                                    ))
+                                                    .throw_with_file_info(
+                                                        &get_env_vars(FILE_PATH).unwrap(),
+                                                        line,
+                                                    );
+                                                }
                                             }
 
                                             if modifier_args.is_none() {
@@ -278,12 +289,19 @@ fn parse_function_header(header_tokens: Vec<Token>, line: i32) {
                             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                         }
 
-                        for split in splitted_args {
+                        for (index, split) in splitted_args.iter().enumerate() {
                             if split.is_empty() {
-                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                    "Unexpected trailing comma in parameter list",
-                                ))
-                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                if index == splitted_args.len() - 1 {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unexpected trailing comma in parameter list",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                } else {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unprocessible entity for function declaration",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
                             }
 
                             let arg = Variant::process_args(split);
@@ -346,12 +364,19 @@ fn parse_function_header(header_tokens: Vec<Token>, line: i32) {
                             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                         }
 
-                        for split in splitted_args {
+                        for (index, split) in splitted_args.iter().enumerate() {
                             if split.is_empty() {
-                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                    "Unexpected trailing comma in parameter list",
-                                ))
-                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                if index == splitted_args.len() - 1 {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unexpected trailing comma in parameter list",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                } else {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                        "Unprocessible entity for function declaration",
+                                    ))
+                                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                                }
                             }
 
                             let arg = Variant::process_args(split);
@@ -454,5 +479,6 @@ fn parse_function_header(header_tokens: Vec<Token>, line: i32) {
             }
         }
     }
-    println!("{:#?}", function_header);
+
+    function_header
 }

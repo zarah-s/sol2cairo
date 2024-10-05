@@ -23,7 +23,6 @@ pub struct ModifierCall {
 pub enum FunctionType {
     Variable,
     Interface,
-    Invocable,
 }
 
 #[derive(Debug)]
@@ -34,7 +33,7 @@ pub struct FunctionHeader {
     pub visibility: Option<Token>,
     pub returns: Option<Vec<Variant>>,
     pub inheritance: Option<Token>,
-
+    pub r#type: FunctionType,
     pub arguments: Option<Vec<Variant>>,
     pub modifiers: Option<Vec<ModifierCall>>,
 }
@@ -50,6 +49,7 @@ impl FunctionHeader {
             inheritance: None,
             returns: None,
             visibility: None,
+            r#type: FunctionType::Interface,
         }
     }
 }

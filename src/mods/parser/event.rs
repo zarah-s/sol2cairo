@@ -20,7 +20,9 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
     let mut events = Vec::new();
 
     for lexem in lexems {
-        let mut event_identifier = String::new();
+        // let mut event_identifier = String::new();
+        let mut event_construct = EventAST::new();
+
         /* SANITY CHECKS */
 
         {
@@ -83,7 +85,7 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
                             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
                     });
-                    event_identifier = identifier.to_owned();
+                    event_construct.identifier = identifier.to_owned();
                 } else {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                         "Expecting identifier but found {}",
@@ -95,9 +97,10 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
         }
 
         {
-            let mut variants: Vec<Variant> = Vec::new();
+            // let mut variants: Vec<Variant> = Vec::new();
             let mut skipped_count = 0;
             let mut raw_args = Vec::new();
+            // let mut anonymous = false;
             let line = lexem.first().unwrap().line;
             for lex in &lexem {
                 for token in &lex.data {
@@ -109,6 +112,8 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                     raw_args.push(token.to_owned());
                 }
             }
+
+            raw_args = raw_args.strip_spaces();
 
             if raw_args[0] != Token::OpenParenthesis {
                 CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
@@ -126,19 +131,45 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
             }
 
-            if raw_args[raw_args.len() - 2] != Token::CloseParenthesis {
-                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                    "Misssing ) for {}",
-                    raw_args.to_string()
-                )))
-                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+            if raw_args[raw_args.len() - 2] == Token::Anonymous {
+                event_construct.anonymous = true;
+                if raw_args[raw_args.len() - 3] != Token::CloseParenthesis {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Misssingdd ) for {}",
+                        raw_args.to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                }
+            } else {
+                if raw_args[raw_args.len() - 2] != Token::CloseParenthesis {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Misssing ) for {}",
+                        raw_args.to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                }
             }
 
-            let stripped = &raw_args[1..&raw_args.len() - 2]
+            let stripped = &raw_args
+                [1..&raw_args.len() - if event_construct.anonymous { 3 } else { 2 }]
                 .split(|pred| *pred == Token::Coma)
                 .collect::<Vec<_>>();
 
-            for combined in stripped {
+            for (index, combined) in stripped.iter().enumerate() {
+                if combined.is_empty() {
+                    if index == stripped.len() - 1 {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                            "Unexpected trailing comma in parameter list",
+                        ))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    } else {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "Unprocessible entity for event {}",
+                            raw_args.to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                    }
+                }
                 let variant = Variant::process_args(combined);
                 if variant.is_err() {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
@@ -148,14 +179,17 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
                     )))
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
                 }
-                variants.push(variant.unwrap());
+                if event_construct.variants.is_none() {
+                    event_construct.variants = Some(Vec::new());
+                }
+                event_construct
+                    .variants
+                    .as_mut()
+                    .unwrap()
+                    .push(variant.unwrap());
             }
 
-            let event_construct = EventAST {
-                identifier: event_identifier,
-                variants,
-                line: lexem[0].line.to_string(),
-            };
+            event_construct.line = lexem[0].line.to_string();
 
             events.push(event_construct);
         }
