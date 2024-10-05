@@ -186,17 +186,19 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
             let mut mapping = Mapping::new();
             let mut mapping_header = MappingHeader::new();
             process_mapping(combined, &mut mapping, &mut mapping_header)?;
-            if let Visibility::None = mapping_header.visibility {
-                // TODO: NOTHING
-            } else {
-                return Err((
-                    format!(
-                        "Invalid visibility declaration on struct mapping \"{}\"",
-                        mapping_header.visibility.to_string()
-                    ),
-                    ErrType::Syntax,
-                ));
+            match mapping_header.visibility {
+                Visibility::None => {}
+                _ => {
+                    return Err((
+                        format!(
+                            "Invalid visibility declaration on struct mapping \"{}\"",
+                            mapping_header.visibility.to_string()
+                        ),
+                        ErrType::Syntax,
+                    ));
+                }
             }
+
             let mapping_construct = StructType::Mapping(MappingAST {
                 header: mapping_header,
                 map: mapping,

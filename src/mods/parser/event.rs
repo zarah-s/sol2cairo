@@ -20,7 +20,6 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
     let mut events = Vec::new();
 
     for lexem in lexems {
-        // let mut event_identifier = String::new();
         let mut event_construct = EventAST::new();
 
         /* SANITY CHECKS */
@@ -97,10 +96,8 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
         }
 
         {
-            // let mut variants: Vec<Variant> = Vec::new();
             let mut skipped_count = 0;
             let mut raw_args = Vec::new();
-            // let mut anonymous = false;
             let line = lexem.first().unwrap().line;
             for lex in &lexem {
                 for token in &lex.data {

@@ -35,7 +35,6 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
             }
 
             let header = parse_function_header(function_header, line);
-            // println!("{:#?}", header);
         }
     }
 }
