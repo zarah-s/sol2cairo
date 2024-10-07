@@ -121,7 +121,7 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _ = parse_lib_implementations(lib_implementations);
         let _ret = parse_variables(vars);
         parse_functions(functions);
-        println!("{:#?}", _ret);
+        // println!("{:#?}", _ret);
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
         //     structs, vars, enums, functions, errors, lib_implementations, lib_header

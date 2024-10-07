@@ -1,29 +1,31 @@
 use crate::mods::{
     lexer::tokens::Token,
-    utils::types::{mutability::Mutability, value::Value, visibility::Visibility},
+    utils::types::{
+        mutability::Mutability, value::Value, variant::Variant, visibility::Visibility,
+    },
 };
 
 use super::mapping::MappingAST;
 
-#[derive(Debug)]
+// #[derive(Debug)]
 
-pub struct StraightVariable {
-    pub data_type: String,
-    pub visibility: Visibility,
-    pub mutability: Mutability,
-    pub name: String,
-    pub is_array: bool,
-    pub is_payable: bool,
-    pub array_size: Option<String>,
-    pub data_location: Option<Token>,
-}
+// pub struct StraightVariable {
+//     pub data_type: String,
+//     pub visibility: Visibility,
+//     pub mutability: Mutability,
+//     pub name: String,
+//     pub is_array: bool,
+//     pub is_payable: bool,
+//     pub array_size: Option<String>,
+//     pub data_location: Option<Token>,
+// }
 
 #[derive(Debug)]
 
 pub enum VariableType {
     Tupple,
     Mapping(MappingAST),
-    Straight(StraightVariable),
+    Straight(Variant),
 }
 
 #[derive(Debug)]

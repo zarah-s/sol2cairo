@@ -94,6 +94,24 @@ pub fn process_args(raw_args: &[Token]) -> Result<Variant, &'static str> {
                 }
             }
 
+            Token::External | Token::Internal | Token::Public | Token::Private => {
+                if let ArgState::Type | ArgState::Array | ArgState::Mutability = state {
+                    arg.visibility = Some(token.clone());
+                    state = ArgState::Visibility;
+                } else {
+                    return Err("Unprocessible entityss.");
+                }
+            }
+
+            Token::Immutable | Token::Constant => {
+                if let ArgState::Type | ArgState::Array | ArgState::Visibility = state {
+                    arg.mutability = Some(token.clone());
+                    state = ArgState::Mutability;
+                } else {
+                    return Err("Unprocessible entity.");
+                }
+            }
+
             Token::Memory | Token::Storage | Token::Calldata => {
                 if let ArgState::Type | ArgState::Array = state {
                     arg.location = Some(token.clone());
@@ -104,8 +122,12 @@ pub fn process_args(raw_args: &[Token]) -> Result<Variant, &'static str> {
             }
 
             Token::Identifier(_identifier) => {
-                if let ArgState::None | ArgState::Location | ArgState::Array | ArgState::Type =
-                    state
+                if let ArgState::None
+                | ArgState::Location
+                | ArgState::Array
+                | ArgState::Type
+                | ArgState::Mutability
+                | ArgState::Visibility = state
                 {
                     match state {
                         ArgState::None => {

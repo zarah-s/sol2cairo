@@ -1,5 +1,7 @@
 use crate::mods::{lexer::tokens::Token, utils::functions::variant::process_args};
 
+use super::{mutability::Mutability, visibility::Visibility};
+
 /// ARGUMENT DEFINITION
 #[derive(Debug)]
 pub struct Variant {
@@ -10,6 +12,8 @@ pub struct Variant {
     pub is_array: bool,
     pub indexed: Option<bool>,
     pub payable_address: bool,
+    pub mutability: Option<Token>,
+    pub visibility: Option<Token>,
 }
 
 pub enum ArgState {
@@ -18,6 +22,8 @@ pub enum ArgState {
     Location,
     Array,
     Name,
+    Mutability,
+    Visibility,
 }
 
 pub trait TVariant {
@@ -35,6 +41,8 @@ impl TVariant for Variant {
             indexed: None,
             is_array: false,
             payable_address: false,
+            visibility: None,
+            mutability: None,
         }
     }
 
