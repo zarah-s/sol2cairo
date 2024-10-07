@@ -692,15 +692,14 @@ fn process_variable_value(raw_value: Vec<Token>, line: i32) -> Value {
                 CompilerError::SyntaxError(SyntaxError::SyntaxError("Missing )"))
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
+
             let mut nested = Value::None;
             let raw_variants = &raw_value.strip_spaces()[1..iteration];
             let method_data = &raw_value.strip_spaces()[iteration + 1..];
             let mut variants: Vec<Value> = Vec::new();
             let mut single_variant = None;
             if !raw_variants.is_empty() {
-                let splits = raw_variants
-                    .split(|pred| *pred == Token::Coma)
-                    .collect::<Vec<_>>();
+                let splits = raw_variants.to_vec().split_coma();
                 if splits.len() == 1 {
                     single_variant = Some(process_variable_value(splits[0].to_vec(), line));
                 } else {
@@ -1505,9 +1504,7 @@ fn process_args(raw_value: &Vec<Token>, raw_args: &[Token], line: i32) -> Vec<Ar
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
 
-            let splitted_named_args = named_args
-                .split(|pred| *pred == Token::Coma)
-                .collect::<Vec<_>>();
+            let splitted_named_args = named_args.to_vec().split_coma();
 
             for _split in splitted_named_args {
                 if _split.is_empty() {
@@ -1579,9 +1576,7 @@ fn process_args(raw_value: &Vec<Token>, raw_args: &[Token], line: i32) -> Vec<Ar
             }
         }
         _ => {
-            let splitted_args = raw_args
-                .split(|pred| *pred == Token::Coma)
-                .collect::<Vec<_>>();
+            let splitted_args = raw_args.to_vec().split_coma();
 
             for split in splitted_args {
                 if split.is_empty() {
@@ -1591,7 +1586,10 @@ fn process_args(raw_value: &Vec<Token>, raw_args: &[Token], line: i32) -> Vec<Ar
 
                 if split.to_vec().strip_spaces().first().unwrap().is_symbol() {
                     match split.to_vec().strip_spaces().first().unwrap() {
-                        Token::Plus | Token::Minus | Token::OpenParenthesis => {
+                        Token::Plus
+                        | Token::Minus
+                        | Token::OpenParenthesis
+                        | Token::OpenSquareBracket => {
                             // TODO: NOTHING
                         }
                         _ => {

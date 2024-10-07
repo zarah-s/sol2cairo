@@ -140,9 +140,7 @@ fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader
                                     let raw_args = &header_tokens[index + 2..iteration + index + 1];
                                     let mut modifier_args: Option<Vec<String>> = None;
                                     if !raw_args.is_empty() {
-                                        let splitted = raw_args
-                                            .split(|pred| *pred == Token::Coma)
-                                            .collect::<Vec<_>>();
+                                        let splitted = raw_args.to_vec().split_coma();
 
                                         for (index, split) in splitted.iter().enumerate() {
                                             if split.is_empty() {
@@ -277,9 +275,7 @@ fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader
                     }
                     let raw_args = &header_tokens[index + 1..iteration + index];
                     if !raw_args.is_empty() {
-                        let splitted_args = raw_args
-                            .split(|pred| *pred == Token::Coma)
-                            .collect::<Vec<_>>();
+                        let splitted_args = raw_args.to_vec().split_coma();
 
                         if splitted_args.is_empty() {
                             CompilerError::SyntaxError(SyntaxError::SyntaxError(
@@ -352,9 +348,7 @@ fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader
                     }
                     let raw_args = &header_tokens[index + 1..iteration + index];
                     if !raw_args.is_empty() {
-                        let splitted_args = raw_args
-                            .split(|pred| *pred == Token::Coma)
-                            .collect::<Vec<_>>();
+                        let splitted_args = raw_args.to_vec().split_coma();
 
                         if splitted_args.is_empty() {
                             CompilerError::SyntaxError(SyntaxError::SyntaxError(

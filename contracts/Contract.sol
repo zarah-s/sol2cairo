@@ -24,7 +24,7 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
      bool oi = bool(true).concat();
      bool cd = (((((true)))));
 bytes hexs = hex"adfadfad";
-     sdfd[] public constant jane=[1,2,3,4,5][get_random().clone()];
+     sdfd[] public constant jane=[1,2,3,4,5][get_random([1,2,3,4,54]).clone()];
 event Transfer(uind.asd[(((100)))] indexed,address payable[j[sdsd]] indexed ) anonymous;
 sd[2000_000] yo = new Toes[]((2000_000).add()).com();
  Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));

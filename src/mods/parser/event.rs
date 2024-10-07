@@ -149,8 +149,8 @@ pub fn parse_events(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Event
 
             let stripped = &raw_args
                 [1..&raw_args.len() - if event_construct.anonymous { 3 } else { 2 }]
-                .split(|pred| *pred == Token::Coma)
-                .collect::<Vec<_>>();
+                .to_vec()
+                .split_coma();
 
             for (index, combined) in stripped.iter().enumerate() {
                 if combined.is_empty() {

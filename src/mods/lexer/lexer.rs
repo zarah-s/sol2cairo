@@ -1,9 +1,10 @@
 use crate::mods::{
     constants::constants::{DATA_TYPES, INTEGER_SIZES, KEYWORDS, SYMBOLS},
+    errors::error::{CompilerError, SyntaxError},
     utils::types::{mutability::Mutability, visibility::Visibility},
 };
 
-use super::tokens::Token;
+use super::tokens::{self, Token};
 
 pub trait TTokenTrait {
     fn to_string(&self) -> String;
@@ -20,6 +21,7 @@ pub trait TTokenTrait {
 pub trait TVecExtension {
     fn to_string(&self) -> String;
     fn strip_spaces(&self) -> Self;
+    fn split_coma(&self) -> Vec<Vec<Token>>;
 }
 
 pub trait TStringExtension {
@@ -50,6 +52,59 @@ impl TVecExtension for Vec<Token> {
 
         result
     }
+
+    fn split_coma(&self) -> Vec<Vec<Token>> {
+        let mut open_context = 0;
+        let mut returns: Vec<Vec<Token>> = Vec::new();
+        let mut combined: Vec<Token> = Vec::new();
+        for (index, token) in self.iter().enumerate() {
+            match token {
+                Token::Coma => {
+                    if open_context == 0 {
+                        returns.push(combined.clone());
+                        combined.clear();
+                        continue;
+                    }
+                }
+                Token::OpenParenthesis => {
+                    open_context += 1;
+                }
+                Token::OpenBraces => {
+                    open_context += 1;
+                }
+                Token::OpenSquareBracket => {
+                    open_context += 1;
+                }
+
+                Token::CloseBraces => {
+                    open_context -= 1;
+                }
+                Token::CloseParenthesis => {
+                    open_context -= 1;
+                }
+                Token::CloseSquareBracket => {
+                    open_context -= 1;
+                }
+                _ => {}
+            }
+            combined.push(token.clone());
+
+            if index == self.len() - 1 {
+                returns.push(combined.clone());
+                combined.clear();
+            }
+        }
+
+        if open_context != 0 {
+            CompilerError::SyntaxError(SyntaxError::MissingToken(&format!(
+                "Missing closing param for {}",
+                self.to_vec().to_string()
+            )))
+            .throw();
+        }
+
+        returns
+    }
 }
 
 impl TVecExtension for Vec<&Token> {
@@ -73,6 +128,58 @@ impl TVecExtension for Vec<&Token> {
         }
 
         result
+    }
+    fn split_coma(&self) -> Vec<Vec<Token>> {
+        let mut open_context = 0;
+        let mut returns: Vec<Vec<Token>> = Vec::new();
+        let mut combined: Vec<Token> = Vec::new();
+        for (index, token) in self.iter().enumerate() {
+            match token {
+                Token::Coma => {
+                    if open_context == 0 {
+                        returns.push(combined.clone());
+                        combined.clear();
+                        continue;
+                    }
+                }
+                Token::OpenParenthesis => {
+                    open_context += 1;
+                }
+                Token::OpenBraces => {
+                    open_context += 1;
+                }
+                Token::OpenSquareBracket => {
+                    open_context += 1;
+                }
+
+                Token::CloseBraces => {
+                    open_context -= 1;
+                }
+                Token::CloseParenthesis => {
+                    open_context -= 1;
+                }
+                Token::CloseSquareBracket => {
+                    open_context -= 1;
+                }
+                _ => {}
+            }
+            combined.push(token.clone().clone());
+
+            if index == self.len() - 1 {
+                returns.push(combined.clone());
+                combined.clear();
+            }
+        }
+
+        if open_context != 0 {
+            CompilerError::SyntaxError(SyntaxError::MissingToken(&format!(
+                "Missing closing param for {}",
+                self.to_vec().to_string()
+            )))
+            .throw();
+        }
+
+        returns
     }
 }
 

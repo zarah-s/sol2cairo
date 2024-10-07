@@ -141,9 +141,7 @@ pub fn parse_custom_errors(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Ve
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
             }
 
-            let stripped = &raw_args[1..&raw_args.len() - 2]
-                .split(|pred| *pred == Token::Coma)
-                .collect::<Vec<_>>();
+            let stripped = &raw_args[1..&raw_args.len() - 2].to_vec().split_coma();
 
             for combined in stripped {
                 let arg = Variant::process_args(combined);
