@@ -13,7 +13,7 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
     uint oi = (1 days).count(payable(address(jane)));
 
     address yo = address(msg.sender);
-
+function (uint256, uint256) external returns (uint256) public functionPointer;
 
     address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
      bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
@@ -28,7 +28,7 @@ bytes hexs = hex"adfadfad";
 event Transfer(uind.asd[(((100)))] indexed,address payable[j[sdsd]] indexed ) anonymous;
 sd[2000_000] yo = new Toes[]((2000_000).add()).com();
  Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
-//  function() internal  view returns(address) selectedFunction;
+ function() internal  view returns(address) selectedFunction;
     uint sdf = uint8(wed).to_bts().add();
 
     function oi() {

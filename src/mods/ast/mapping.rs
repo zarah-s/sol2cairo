@@ -57,15 +57,15 @@ impl Mapping {
         }
     }
 
-    pub fn get_return_type(&self) -> Option<&Variant> {
-        if let Some(ref _val) = self.value {
-            match _val {
-                MappingValue::Mapping(_map) => _map.get_return_type(),
-                MappingValue::Raw(_return) => return Some(_return),
-            };
-        }
-        None
-    }
+    // pub fn get_return_type(&self) -> Option<&Variant> {
+    //     if let Some(ref _val) = self.value {
+    //         match _val {
+    //             MappingValue::Mapping(_map) => _map.get_return_type(),
+    //             MappingValue::Raw(_return) => return Some(_return),
+    //         };
+    //     }
+    //     None
+    // }
 
     pub fn insert(
         &mut self,

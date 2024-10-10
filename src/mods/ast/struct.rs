@@ -2,9 +2,9 @@ use crate::mods::utils::types::variant::Variant;
 
 use super::mapping::MappingAST;
 
-pub trait TStructIdentifier {
-    fn is_storage(&self) -> bool;
-}
+// pub trait TStructIdentifier {
+//     fn is_storage(&self) -> bool;
+// }
 
 #[derive(Debug)]
 pub struct StructHeader {
@@ -24,15 +24,15 @@ pub enum StructType {
     Variant(Variant),
 }
 
-impl TStructIdentifier for StructAST {
-    fn is_storage(&self) -> bool {
-        for data in &self.types {
-            match data {
-                StructType::Mapping(_) => return true,
-                _ => {}
-            }
-        }
+// impl TStructIdentifier for StructAST {
+//     fn is_storage(&self) -> bool {
+//         for data in &self.types {
+//             match data {
+//                 StructType::Mapping(_) => return true,
+//                 _ => {}
+//             }
+//         }
 
-        false
-    }
-}
+//         false
+//     }
+// }

@@ -1,7 +1,8 @@
 use crate::mods::{
     ast::{
+        function::{FunctionHeader, FunctionType},
         mapping::{Mapping, MappingAST, MappingHeader},
-        variable::{VariableAST, VariableState, VariableType},
+        variable::{FunctionTypeDetails, VariableAST, VariableType},
     },
     constants::constants::FILE_PATH,
     errors::error::{CompilerError, ErrType, SyntaxError},
@@ -9,7 +10,6 @@ use crate::mods::{
         functions::global::{get_env_vars, validate_identifier},
         types::{
             line_descriptors::LineDescriptions,
-            mutability::Mutability,
             value::{
                 AddressValue, AddressVariable, ArgumentType, ArrayValue, BooleanValue,
                 BooleanVariable, BytesValue, BytesVariable, ExpressionTypes, ExpressionValue,
@@ -19,7 +19,6 @@ use crate::mods::{
                 VariantValue,
             },
             variant::{TVariant, Variant},
-            visibility::Visibility,
         },
     },
 };
@@ -29,7 +28,7 @@ use crate::mods::lexer::{
     tokens::Token,
 };
 
-use super::mapping::process_mapping;
+use super::{function::parse_function_header, mapping::process_mapping};
 
 pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<VariableAST> {
     let mut variables = Vec::new();
@@ -119,7 +118,47 @@ fn process_var_construct(
         }
 
         Token::Function => {
-            panic!("sdfasd {:?}", combined)
+            let stripped = combined.strip_spaces();
+            if Token::SemiColon != stripped[stripped.len() - 1] {
+                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(&format!(
+                    "Expecting ';' but got '{}'",
+                    stripped[stripped.len() - 1].to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            if let Token::Identifier(_identifier) = &stripped[stripped.len() - 2] {
+                let mut visibility = None;
+                let name = _identifier.to_string();
+                let mut idx = 2;
+                if let Token::External | Token::Internal | Token::Public | Token::Private =
+                    stripped[stripped.len() - 3]
+                {
+                    visibility = Some(stripped[stripped.len() - 3].clone());
+                    idx = 3;
+                }
+                let function_def = &stripped[..stripped.len() - idx];
+                let func_header = parse_function_header(function_def.to_vec(), line);
+                let variable_construct = VariableAST {
+                    value: None,
+                    variable_type: VariableType::FunctionPTR(
+                        FunctionTypeDetails { name, visibility },
+                        FunctionHeader {
+                            r#type: FunctionType::Variable,
+                            ..func_header
+                        },
+                    ),
+                };
+
+                return Ok(variable_construct);
+            } else {
+                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(&format!(
+                    "Expecting identifier but got '{}'",
+                    stripped[stripped.len() - 2].to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                unreachable!();
+            }
         }
         _ => {
             let equals_index = combined.iter().position(|pred| *pred == Token::Equals);
@@ -1349,14 +1388,14 @@ fn process_method_data_with_possible_fn_ptr_invocation(
     line: i32,
     method_data: &[Token],
 ) -> Value {
-    let mut nested = Value::None;
+    // let mut nested = Value::None;
     match method_data[0] {
         Token::Dot => {
-            nested =
-                process_variable_value(raw_value.strip_spaces()[iteration + 2..].to_vec(), line);
+            //   let   nested =
+            process_variable_value(raw_value.strip_spaces()[iteration + 2..].to_vec(), line)
         }
         Token::OpenSquareBracket => {
-            nested =
+            let nested =
                 process_variable_value(raw_value.strip_spaces()[iteration + 1..].to_vec(), line);
             if let Value::ArrayValue(_value) = &nested {
                 /* VALIDATIONS */
@@ -1370,6 +1409,8 @@ fn process_method_data_with_possible_fn_ptr_invocation(
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                 }
             }
+
+            nested
         }
 
         Token::OpenParenthesis => {
@@ -1412,27 +1453,27 @@ fn process_method_data_with_possible_fn_ptr_invocation(
             }
             if !fn_ptr_raw_variants.is_empty() {
                 let fn_ptr_arguments = process_args(&raw_value, fn_ptr_raw_variants, line);
-                nested = Value::FunctionPTRInvocation(FunctionPTRInvocation {
+                Value::FunctionPTRInvocation(FunctionPTRInvocation {
                     args: Some(fn_ptr_arguments),
                     then: if let Value::None = fn_ptr_nested {
                         None
                     } else {
                         Some(Box::new(fn_ptr_nested))
                     },
-                });
+                })
             } else {
-                nested = Value::FunctionPTRInvocation(FunctionPTRInvocation {
+                Value::FunctionPTRInvocation(FunctionPTRInvocation {
                     args: None,
                     then: if let Value::None = fn_ptr_nested {
                         None
                     } else {
                         Some(Box::new(fn_ptr_nested))
                     },
-                });
+                })
             }
         }
         Token::Plus | Token::Minus | Token::Multiply | Token::Divide => {
-            nested = process_math_operation(&method_data.to_vec(), line, &method_data[0]);
+            process_math_operation(&method_data.to_vec(), line, &method_data[0])
         }
         _ => {
             CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
@@ -1443,7 +1484,7 @@ fn process_method_data_with_possible_fn_ptr_invocation(
             unreachable!()
         }
     }
-    nested
+    // nested
 }
 
 fn process_contract_like_instance(

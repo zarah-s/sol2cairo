@@ -1,20 +1,20 @@
 use crate::mods::{
     constants::constants::{DATA_TYPES, INTEGER_SIZES, KEYWORDS, SYMBOLS},
     errors::error::{CompilerError, SyntaxError},
-    utils::types::{mutability::Mutability, visibility::Visibility},
+    utils::types::visibility::Visibility,
 };
 
-use super::tokens::{self, Token};
+use super::tokens::Token;
 
 pub trait TTokenTrait {
     fn to_string(&self) -> String;
     fn extract_visibility(&self) -> Visibility;
-    fn extract_mutability(&self) -> Mutability;
+    // fn extract_mutability(&self) -> Mutability;
     fn is_symbol(&self) -> bool;
     fn is_keyword(&self) -> bool;
     fn is_string_literal(&self) -> bool;
     fn is_integer_literal(&self) -> bool;
-    fn is_boolean(&self) -> bool;
+    // fn is_boolean(&self) -> bool;
     fn is_data_type(&self) -> bool;
 }
 
@@ -163,7 +163,7 @@ impl TVecExtension for Vec<&Token> {
                 }
                 _ => {}
             }
-            combined.push(token.clone().clone());
+            combined.push(token.to_owned().clone());
 
             if index == self.len() - 1 {
                 returns.push(combined.clone());
@@ -228,12 +228,12 @@ impl TTokenTrait for Token {
         }
     }
 
-    fn is_boolean(&self) -> bool {
-        match self {
-            Token::True => true,
-            _ => false,
-        }
-    }
+    // fn is_boolean(&self) -> bool {
+    //     match self {
+    //         Token::True => true,
+    //         _ => false,
+    //     }
+    // }
     fn is_integer_literal(&self) -> bool {
         is_integer_literal(self)
     }
@@ -277,9 +277,9 @@ impl TTokenTrait for Token {
     fn extract_visibility(&self) -> Visibility {
         Visibility::get_visibility_from_token(&self)
     }
-    fn extract_mutability(&self) -> Mutability {
-        Mutability::get_mutability_from_token(&self)
-    }
+    // fn extract_mutability(&self) -> Mutability {
+    //     Mutability::get_mutability_from_token(&self)
+    // }
 }
 
 impl TTokenTrait for &Token {
@@ -297,12 +297,12 @@ impl TTokenTrait for &Token {
             _ => false,
         }
     }
-    fn is_boolean(&self) -> bool {
-        match self {
-            Token::True => true,
-            _ => false,
-        }
-    }
+    // fn is_boolean(&self) -> bool {
+    //     match self {
+    //         Token::True => true,
+    //         _ => false,
+    //     }
+    // }
     fn is_integer_literal(&self) -> bool {
         is_integer_literal(self)
     }
@@ -347,9 +347,9 @@ impl TTokenTrait for &Token {
         Visibility::get_visibility_from_token(&self)
     }
 
-    fn extract_mutability(&self) -> Mutability {
-        Mutability::get_mutability_from_token(&self)
-    }
+    // fn extract_mutability(&self) -> Mutability {
+    //     Mutability::get_mutability_from_token(&self)
+    // }
 }
 
 fn is_integer_literal(input: &Token) -> bool {

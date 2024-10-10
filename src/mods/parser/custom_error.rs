@@ -16,13 +16,6 @@ use crate::mods::lexer::{
     tokens::Token,
 };
 
-#[derive(Debug)]
-enum ErrorState {
-    None,
-    Coma,
-    Arg,
-}
-
 pub fn parse_custom_errors(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<CustomErrorAST> {
     let mut custom_errors = Vec::new();
 

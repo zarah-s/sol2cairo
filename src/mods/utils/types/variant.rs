@@ -1,7 +1,5 @@
 use crate::mods::{lexer::tokens::Token, utils::functions::variant::process_args};
 
-use super::{mutability::Mutability, visibility::Visibility};
-
 /// ARGUMENT DEFINITION
 #[derive(Debug)]
 pub struct Variant {

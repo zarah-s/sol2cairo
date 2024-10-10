@@ -1,12 +1,10 @@
 use crate::mods::lexer::tokens::Token;
 
-#[derive(Debug)]
-
-pub enum TypeCast {
-    Value(Box<Value>),
-    Cast(Box<TypeCast>),
-}
-
+// #[derive(Debug)]
+// pub enum TypeCast {
+//     Value(Box<Value>),
+//     Cast(Box<TypeCast>),
+// }
 #[derive(Debug)]
 
 pub enum StringVariable {
@@ -54,7 +52,7 @@ pub struct BytesValue {
 #[derive(Debug)]
 
 pub enum AddressVariable {
-    Literal(String),
+    // Literal(String),
     TypeCast(Box<Value>),
 }
 
@@ -124,29 +122,29 @@ pub struct ExpressionValue {
 #[derive(Debug)]
 
 pub enum FunctionValueType {
-    Global,
+    // Global,
     Defined,
 }
-#[derive(Debug)]
+// #[derive(Debug)]
 
-pub struct ContractInstanceValue {
-    pub identifier: String,
-    pub arguments: Vec<Value>,
-}
-#[derive(Debug)]
+// pub struct ContractInstanceValue {
+//     pub identifier: String,
+//     pub arguments: Vec<Value>,
+// }
+// #[derive(Debug)]
 
-pub struct ContractFunctionValue {
-    pub identifier: String,
-    pub arguments: Vec<Value>,
-    pub function_identifier: String,
-    pub function_args: Vec<Value>,
-}
-#[derive(Debug)]
+// pub struct ContractFunctionValue {
+//     pub identifier: String,
+//     pub arguments: Vec<Value>,
+//     pub function_identifier: String,
+//     pub function_args: Vec<Value>,
+// }
+// #[derive(Debug)]
 
-pub enum Contractvalue {
-    ContractFunctionValue(ContractFunctionValue),
-    ContractInstanceValue(ContractInstanceValue),
-}
+// pub enum Contractvalue {
+//     ContractFunctionValue(ContractFunctionValue),
+//     ContractInstanceValue(ContractInstanceValue),
+// }
 
 #[derive(Debug)]
 pub enum ArgumentType {
@@ -184,19 +182,19 @@ pub struct FunctionPTRInvocation {
     pub then: Option<Box<Value>>,
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 
-pub struct StructInstanceValue {
-    pub identifier: String,
-    pub variants: Vec<[String; 2]>,
-}
+// pub struct StructInstanceValue {
+//     pub identifier: String,
+//     pub variants: Vec<[String; 2]>,
+// }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 
-pub enum StructValue {
-    Instance(StructInstanceValue),
-    Variant(VariantValue),
-}
+// pub enum StructValue {
+//     Instance(StructInstanceValue),
+//     Variant(VariantValue),
+// }
 
 #[derive(Debug)]
 pub struct InstanceVariable {
@@ -212,19 +210,19 @@ pub struct InstanceValue {
     pub then: Option<Box<Value>>,
 }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 
-pub enum NestType {
-    Variant,
-    Method,
-}
+// pub enum NestType {
+//     Variant,
+//     Method,
+// }
 
-#[derive(Debug)]
+// #[derive(Debug)]
 
-pub struct NestedValue {
-    pub r#type: NestType,
-    pub value: Box<Value>,
-}
+// pub struct NestedValue {
+//     pub r#type: NestType,
+//     pub value: Box<Value>,
+// }
 
 #[derive(Debug)]
 pub struct ArrayValue {
@@ -269,40 +267,40 @@ pub enum Value {
     None,
 }
 
-impl Value {
-    fn add_method(&mut self, new: Value) {
-        match self {
-            Self::None => {
-                *self = new;
-            }
-            _ => {
-                if self.access_then().is_none() {
-                    *self.access_then() = Some(Box::new(new));
-                } else {
-                    Value::od(&mut self.access_then().as_mut().unwrap(), new);
-                }
-            }
-        }
-    }
+// impl Value {
+//     fn add_method(&mut self, new: Value) {
+//         match self {
+//             Self::None => {
+//                 *self = new;
+//             }
+//             _ => {
+//                 if self.access_then().is_none() {
+//                     *self.access_then() = Some(Box::new(new));
+//                 } else {
+//                     Value::od(&mut self.access_then().as_mut().unwrap(), new);
+//                 }
+//             }
+//         }
+//     }
 
-    fn od(oth: &mut Box<Value>, new: Value) {
-        match **oth {
-            Value::None => *oth = Box::new(new),
-            _ => {
-                if oth.access_then().is_none() {
-                    *oth.access_then().as_mut().unwrap() = Box::new(new);
-                } else {
-                    Value::od(&mut oth.access_then().as_mut().unwrap(), new)
-                }
-            }
-        }
-    }
-    fn access_then(&mut self) -> &mut Option<Box<Value>> {
-        match self {
-            Value::FunctionValue(value) => &mut value.then,
-            _ => {
-                panic!("Detected non method type")
-            }
-        }
-    }
-}
+//     fn od(oth: &mut Box<Value>, new: Value) {
+//         match **oth {
+//             Value::None => *oth = Box::new(new),
+//             _ => {
+//                 if oth.access_then().is_none() {
+//                     *oth.access_then().as_mut().unwrap() = Box::new(new);
+//                 } else {
+//                     Value::od(&mut oth.access_then().as_mut().unwrap(), new)
+//                 }
+//             }
+//         }
+//     }
+//     fn access_then(&mut self) -> &mut Option<Box<Value>> {
+//         match self {
+//             Value::FunctionValue(value) => &mut value.then,
+//             _ => {
+//                 panic!("Detected non method type")
+//             }
+//         }
+//     }
+// }

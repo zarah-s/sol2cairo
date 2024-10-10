@@ -1,7 +1,7 @@
 use crate::mods::ast::function::{FunctionHeader, FunctionHeaderState, ModifierCall};
 use crate::mods::constants::constants::FILE_PATH;
 use crate::mods::errors::error::{CompilerError, SyntaxError};
-use crate::mods::lexer::lexer::{TStringExtension, TTokenTrait, TVecExtension};
+use crate::mods::lexer::lexer::TVecExtension;
 use crate::mods::lexer::tokens::Token;
 use crate::mods::utils::functions::global::get_env_vars;
 use crate::mods::utils::types::line_descriptors::LineDescriptions;
@@ -39,7 +39,7 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
     }
 }
 
-fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader {
+pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader {
     let header_tokens = header_tokens.strip_spaces();
     if header_tokens[0] != Token::Function {
         CompilerError::SyntaxError(SyntaxError::SyntaxError(
@@ -248,7 +248,7 @@ fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader
             }
 
             Token::OpenParenthesis => {
-                if let FunctionHeaderState::Identifier = state {
+                if let FunctionHeaderState::Identifier | FunctionHeaderState::Keyword = state {
                     let mut iteration = 0;
                     let mut open_context = 0;
 
