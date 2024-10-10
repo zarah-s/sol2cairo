@@ -121,7 +121,7 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _ = parse_lib_implementations(lib_implementations);
         let _ret = parse_variables(vars);
         parse_functions(functions);
-        // println!("{:#?}", _ret);
+        // println!("{:#?}", _structs);
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
         //     structs, vars, enums, functions, errors, lib_implementations, lib_header
@@ -670,18 +670,12 @@ fn seperate_variant_variants(
                     terminator_type = TerminationTypeContext::Enum;
                 }
                 Token::Function | Token::Receive | Token::Fallback | Token::Constructor => {
-                    if parent_index > 0 {
-                        validate_clash(
-                            terminator_type,
-                            &tokens,
-                            &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
-                            Some(opened_braces_count),
-                        )
-                    }
-                    if is_interface {
-                        terminator_type = TerminationTypeContext::Variable
-                    } else {
-                        terminator_type = TerminationTypeContext::Function
+                    if TerminationTypeContext::Struct != terminator_type {
+                        if is_interface {
+                            terminator_type = TerminationTypeContext::Variable
+                        } else {
+                            terminator_type = TerminationTypeContext::Function
+                        }
                     }
                 }
                 Token::Error => {

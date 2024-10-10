@@ -1,8 +1,8 @@
 use crate::mods::{
     ast::{
-        function::{FunctionHeader, FunctionType},
+        function::{FunctionHeader, FunctionPTRDetails, FunctionType},
         mapping::{Mapping, MappingAST, MappingHeader},
-        variable::{FunctionTypeDetails, VariableAST, VariableType},
+        variable::{VariableAST, VariableType},
     },
     constants::constants::FILE_PATH,
     errors::error::{CompilerError, ErrType, SyntaxError},
@@ -142,7 +142,7 @@ fn process_var_construct(
                 let variable_construct = VariableAST {
                     value: None,
                     variable_type: VariableType::FunctionPTR(
-                        FunctionTypeDetails { name, visibility },
+                        FunctionPTRDetails { name, visibility },
                         FunctionHeader {
                             r#type: FunctionType::Variable,
                             ..func_header

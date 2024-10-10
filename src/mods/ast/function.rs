@@ -14,6 +14,13 @@ pub enum FunctionHeaderState {
 }
 
 #[derive(Debug)]
+
+pub struct FunctionPTRDetails {
+    pub name: String,
+    pub visibility: Option<Token>,
+}
+
+#[derive(Debug)]
 pub struct ModifierCall {
     pub identifier: String,
     pub arguments: Option<Vec<String>>,

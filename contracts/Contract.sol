@@ -12,6 +12,8 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
 }
     uint oi = (1 days).count(payable(address(jane)));
 
+  struct FunctionHolder {
+    }
     address yo = address(msg.sender);
 function (uint256, uint256) external returns (uint256) public functionPointer;
 
@@ -53,6 +55,7 @@ sd[2000_000] yo = new Toes[]((2000_000).add()).com();
         address[(100**10)] owner;
         address payable[2] dd;
         uint256 collection_count;
+        function (uint256, uint256) external returns (uint256) funcPointerStr;
         mapping(sd.ds => Types.Collection) collection_by_id;
         mapping(string => Types.Collection) collection_by_name;
         mapping(uint => mapping(uint => mapping(uint => uint))) totalSupply;

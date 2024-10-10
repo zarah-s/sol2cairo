@@ -1,16 +1,9 @@
-use crate::mods::{
-    lexer::tokens::Token,
-    utils::types::{value::Value, variant::Variant},
+use crate::mods::utils::types::{value::Value, variant::Variant};
+
+use super::{
+    function::{FunctionHeader, FunctionPTRDetails},
+    mapping::MappingAST,
 };
-
-use super::{function::FunctionHeader, mapping::MappingAST};
-
-#[derive(Debug)]
-
-pub struct FunctionTypeDetails {
-    pub name: String,
-    pub visibility: Option<Token>,
-}
 
 #[derive(Debug)]
 
@@ -18,7 +11,7 @@ pub enum VariableType {
     // Tupple,
     Mapping(MappingAST),
     Straight(Variant),
-    FunctionPTR(FunctionTypeDetails, FunctionHeader),
+    FunctionPTR(FunctionPTRDetails, FunctionHeader),
 }
 
 #[derive(Debug)]
