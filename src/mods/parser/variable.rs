@@ -1,6 +1,6 @@
 use crate::mods::{
     ast::{
-        function::{FunctionHeader, FunctionPTRDetails, FunctionType},
+        function::{FunctionHeader, FunctionType},
         mapping::{Mapping, MappingAST, MappingHeader},
         variable::{VariableAST, VariableType},
     },
@@ -128,38 +128,19 @@ fn process_var_construct(
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
 
-            if let Token::Identifier(_identifier) = &stripped[stripped.len() - 2] {
-                let mut visibility = None;
-                let name = _identifier.to_string();
-                let mut idx = 2;
-                if let Token::External | Token::Internal | Token::Public | Token::Private =
-                    stripped[stripped.len() - 3]
-                {
-                    visibility = Some(stripped[stripped.len() - 3].clone());
-                    idx = 3;
-                }
-                let function_def = &stripped[..stripped.len() - idx];
-                let func_header = parse_function_header(function_def.to_vec(), line);
-                let variable_construct = VariableAST {
-                    value: None,
-                    variable_type: VariableType::FunctionPTR(
-                        FunctionPTRDetails { name, visibility },
-                        FunctionHeader {
-                            r#type: FunctionType::Variable,
-                            ..func_header
-                        },
-                    ),
-                };
+            let function_def = stripped[..stripped.len() - 1].to_vec();
+            let func_header = parse_function_header(function_def, line);
 
-                return Ok(variable_construct);
-            } else {
-                CompilerError::SyntaxError(SyntaxError::UnexpectedToken(&format!(
-                    "Expecting identifier but got '{}'",
-                    stripped[stripped.len() - 2].to_string()
-                )))
-                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                unreachable!();
-            }
+            // println!("{:#?}", func_header);
+            let variable_construct = VariableAST {
+                value: None,
+                variable_type: VariableType::FunctionPTR(FunctionHeader {
+                    r#type: FunctionType::Variable,
+                    ..func_header
+                }),
+            };
+
+            return Ok(variable_construct);
         }
         _ => {
             let equals_index = combined.iter().position(|pred| *pred == Token::Equals);

@@ -1,5 +1,6 @@
 use crate::mods::{lexer::tokens::Token, utils::types::variant::Variant};
 
+#[derive(Debug)]
 pub enum FunctionHeaderState {
     Keyword,
     Args,
@@ -10,14 +11,11 @@ pub enum FunctionHeaderState {
     Identifier,
     Returns,
     Gasless,
+    MemLocation,
+    VarVisibility,
+    VarName,
+    Array,
     None,
-}
-
-#[derive(Debug)]
-
-pub struct FunctionPTRDetails {
-    pub name: String,
-    pub visibility: Option<Token>,
 }
 
 #[derive(Debug)]
@@ -41,8 +39,20 @@ pub struct FunctionHeader {
     pub returns: Option<Vec<Variant>>,
     pub inheritance: Option<Token>,
     pub r#type: FunctionType,
-    pub arguments: Option<Vec<Variant>>,
+    pub arguments: Option<Vec<ArgType>>,
     pub modifiers: Option<Vec<ModifierCall>>,
+    /// for variable type function headers
+    pub is_array: bool,
+    pub size: Option<String>,
+    pub location: Option<Token>,
+    pub var_visibility: Option<Token>,
+    pub var_name: Option<String>,
+}
+
+#[derive(Debug)]
+pub enum ArgType {
+    Function(FunctionHeader),
+    Variant(Variant),
 }
 
 impl FunctionHeader {
@@ -57,6 +67,11 @@ impl FunctionHeader {
             returns: None,
             visibility: None,
             r#type: FunctionType::Interface,
+            is_array: false,
+            location: None,
+            size: None,
+            var_name: None,
+            var_visibility: None,
         }
     }
 }

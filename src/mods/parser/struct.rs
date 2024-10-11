@@ -1,4 +1,4 @@
-use crate::mods::ast::function::FunctionPTRDetails;
+use crate::mods::ast::function::{FunctionHeader, FunctionType};
 use crate::mods::ast::mapping::{Mapping, MappingAST, MappingHeader};
 use crate::mods::ast::r#struct::{StructAST, StructHeader, StructType};
 use crate::mods::errors::error::{CompilerError, ErrType, SyntaxError};
@@ -221,27 +221,15 @@ fn process_variants(combined: &Vec<Token>) -> Result<StructType, (String, ErrTyp
                 ));
             }
 
-            if let Token::Identifier(_identifier) = &stripped[stripped.len() - 2] {
-                let function_def = &stripped[..stripped.len() - 2];
-                let func_header = parse_function_header(function_def.to_vec(), 0);
-                let function_ptr_construct = StructType::Function(
-                    FunctionPTRDetails {
-                        name: _identifier.to_string(),
-                        visibility: None,
-                    },
-                    func_header,
-                );
+            let function_def = &stripped[..stripped.len() - 1];
 
-                return Ok(function_ptr_construct);
-            } else {
-                return Err((
-                    format!(
-                        "Expecting identifier but got '{}'",
-                        stripped[stripped.len() - 1].to_string()
-                    ),
-                    ErrType::Syntax,
-                ));
-            }
+            let func_header = parse_function_header(function_def.to_vec(), 0);
+            let function_ptr_construct = StructType::Function(FunctionHeader {
+                r#type: FunctionType::Variable,
+                ..func_header
+            });
+
+            return Ok(function_ptr_construct);
         }
         Token::Uint(_)
         | Token::Int(_)

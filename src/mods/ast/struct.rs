@@ -1,9 +1,6 @@
 use crate::mods::utils::types::variant::Variant;
 
-use super::{
-    function::{FunctionHeader, FunctionPTRDetails},
-    mapping::MappingAST,
-};
+use super::{function::FunctionHeader, mapping::MappingAST};
 
 // pub trait TStructIdentifier {
 //     fn is_storage(&self) -> bool;
@@ -25,7 +22,7 @@ pub struct StructAST {
 pub enum StructType {
     Mapping(MappingAST),
     Variant(Variant),
-    Function(FunctionPTRDetails, FunctionHeader),
+    Function(FunctionHeader),
 }
 
 // impl TStructIdentifier for StructAST {

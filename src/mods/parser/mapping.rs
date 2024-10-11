@@ -1,3 +1,4 @@
+use crate::mods::ast::function::{FunctionHeader, FunctionType};
 use crate::mods::ast::mapping::MappingReturn;
 use crate::mods::constants::constants::FILE_PATH;
 use crate::mods::parser::function::parse_function_header;
@@ -105,22 +106,29 @@ pub fn process_mapping(
             Token::Function => {
                 if let MappingState::Gt = state {
                     let mut iteration = 0;
-                    let mut context = 0;
+                    let mut open_context = 0;
                     for tkn in &combined[index..] {
                         match tkn {
                             Token::OpenParenthesis => {
-                                context += 1;
+                                open_context += 1;
                             }
                             Token::CloseParenthesis => {
-                                if context == 0 {
+                                if open_context == 0 {
                                     break;
                                 }
-                                context -= 1;
+                                open_context -= 1;
                             }
                             _ => {}
                         }
 
                         iteration += 1;
+                    }
+
+                    if open_context != 0 {
+                        return Err((
+                            format!("Invalid variant declaration \"{}\"", _combined.to_string()),
+                            ErrType::Syntax,
+                        ));
                     }
 
                     pad = iteration + index;
@@ -130,7 +138,10 @@ pub fn process_mapping(
 
                     mapping.insert(
                         None,
-                        Some(MappingValue::Raw(MappingReturn::Function(function_header))),
+                        Some(MappingValue::Raw(MappingReturn::Function(FunctionHeader {
+                            r#type: FunctionType::Variable,
+                            ..function_header
+                        }))),
                     )?;
                     state = MappingState::Value;
                 } else {

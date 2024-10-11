@@ -14,12 +14,35 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
 
     mapping(uint256 => function (uint256, uint256) external returns (uint256)) funcPointers;
 
+ function executeFunctions(
+        function (uint256, uint256) external returns (uint256)[] memory funcArray,
+        uint256 a,
+        uint256 b
+    ) external view returns (uint256[] memory results) {
+        results = new uint256[](funcArray.length); // Create an array to store the results
+        
+        // Loop through the array and call each function
+        for (uint256 i = 0; i < funcArray.length; i++) {
+            results[i] = funcArray[i](a, b); // Execute each function pointer
+        }
+    }
+
+
+  function executeFunction(
+        function (uint256, uint256) external returns (uint256) func,
+        uint256[] a,
+        uint256 b
+    ) external view returns (uint256) {
+        return func(a, b); // Calls the passed function pointer
+    }
+
+
   struct FunctionHolder {
         function (uint256, uint256) external returns (uint256) funcPointerStr;
 
     }
     address yo = address(msg.sender);
-function (uint256, uint256) external returns (uint256) public functionPointer;
+function (uint256, uint256) external returns (uint256)[20] public functionPointer;
 
     address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
      bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();

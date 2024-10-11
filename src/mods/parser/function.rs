@@ -1,4 +1,6 @@
-use crate::mods::ast::function::{FunctionHeader, FunctionHeaderState, ModifierCall};
+use crate::mods::ast::function::{
+    ArgType, FunctionHeader, FunctionHeaderState, FunctionType, ModifierCall,
+};
 use crate::mods::constants::constants::FILE_PATH;
 use crate::mods::errors::error::{CompilerError, SyntaxError};
 use crate::mods::lexer::lexer::TVecExtension;
@@ -35,6 +37,7 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
             }
 
             let header = parse_function_header(function_header, line);
+            println!("{:#?}", header);
         }
     }
 }
@@ -73,6 +76,10 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                 if let FunctionHeaderState::None
                 | FunctionHeaderState::Keyword
                 | FunctionHeaderState::Identifier
+                | FunctionHeaderState::Array
+                | FunctionHeaderState::MemLocation
+                | FunctionHeaderState::VarName
+                | FunctionHeaderState::VarVisibility
                 | FunctionHeaderState::Returns = state
                 {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(
@@ -96,113 +103,135 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                     function_header.name = Some(_identifier.to_owned());
                     state = FunctionHeaderState::Identifier;
                 } else {
-                    if let FunctionHeaderState::None
-                    | FunctionHeaderState::Keyword
-                    | FunctionHeaderState::Identifier
-                    | FunctionHeaderState::Returns = state
-                    {
-                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                            "Unprocessible entity for function declaration",
-                        ))
-                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    if function_header.name.is_none() {
+                        if let FunctionHeaderState::Visibility
+                        | FunctionHeaderState::Array
+                        | FunctionHeaderState::MemLocation
+                        | FunctionHeaderState::VarVisibility
+                        | FunctionHeaderState::Returns = state
+                        {
+                            function_header.var_name = Some(_identifier.to_string());
+                            state = FunctionHeaderState::VarName;
+                        } else {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "Unprocessible entity for function declaration",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
                     } else {
-                        if let Some(_tkn) = header_tokens.get(index + 1) {
-                            match _tkn {
-                                Token::OpenParenthesis => {
-                                    let mut iteration = 0;
-                                    let mut open_context = 0;
+                        if let FunctionHeaderState::None
+                        | FunctionHeaderState::Keyword
+                        | FunctionHeaderState::Identifier
+                        | FunctionHeaderState::Array
+                        | FunctionHeaderState::MemLocation
+                        | FunctionHeaderState::VarName
+                        | FunctionHeaderState::VarVisibility
+                        | FunctionHeaderState::Returns = state
+                        {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "Unprocessible entity for function declaration",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        } else {
+                            if let Some(_tkn) = header_tokens.get(index + 1) {
+                                match _tkn {
+                                    Token::OpenParenthesis => {
+                                        let mut iteration = 0;
+                                        let mut open_context = 0;
 
-                                    for tkns in &header_tokens[index + 1..] {
-                                        match tkns {
-                                            Token::OpenParenthesis => open_context += 1,
-                                            Token::CloseParenthesis => {
-                                                open_context -= 1;
-                                                if open_context == 0 {
-                                                    break;
+                                        for tkns in &header_tokens[index + 1..] {
+                                            match tkns {
+                                                Token::OpenParenthesis => open_context += 1,
+                                                Token::CloseParenthesis => {
+                                                    open_context -= 1;
+                                                    if open_context == 0 {
+                                                        break;
+                                                    }
                                                 }
+                                                _ => {}
                                             }
-                                            _ => {}
+
+                                            iteration += 1;
                                         }
 
-                                        iteration += 1;
-                                    }
+                                        if open_context != 0 {
+                                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                                "Unprocessible entity for function declaration",
+                                            ))
+                                            .throw_with_file_info(
+                                                &get_env_vars(FILE_PATH).unwrap(),
+                                                line,
+                                            );
+                                        }
 
-                                    if open_context != 0 {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            "Unprocessible entity for function declaration",
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        );
-                                    }
+                                        let raw_args =
+                                            &header_tokens[index + 2..iteration + index + 1];
+                                        let mut modifier_args: Option<Vec<String>> = None;
+                                        if !raw_args.is_empty() {
+                                            let splitted = raw_args.to_vec().split_coma();
 
-                                    let raw_args = &header_tokens[index + 2..iteration + index + 1];
-                                    let mut modifier_args: Option<Vec<String>> = None;
-                                    if !raw_args.is_empty() {
-                                        let splitted = raw_args.to_vec().split_coma();
-
-                                        for (index, split) in splitted.iter().enumerate() {
-                                            if split.is_empty() {
-                                                if index == splitted.len() - 1 {
-                                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                            for (index, split) in splitted.iter().enumerate() {
+                                                if split.is_empty() {
+                                                    if index == splitted.len() - 1 {
+                                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
                                                         "Unexpected trailing comma in parameter list",
                                                     ))
                                                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                                                } else {
-                                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                                    } else {
+                                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
                                                         "Unprocessible entity for function declaration",
                                                     ))
                                                     .throw_with_file_info(
                                                         &get_env_vars(FILE_PATH).unwrap(),
                                                         line,
                                                     );
+                                                    }
                                                 }
-                                            }
 
-                                            if modifier_args.is_none() {
-                                                modifier_args = Some(Vec::new());
-                                            }
+                                                if modifier_args.is_none() {
+                                                    modifier_args = Some(Vec::new());
+                                                }
 
-                                            modifier_args
-                                                .as_mut()
-                                                .unwrap()
-                                                .push(split.to_vec().to_string());
+                                                modifier_args
+                                                    .as_mut()
+                                                    .unwrap()
+                                                    .push(split.to_vec().to_string());
+                                            }
                                         }
+
+                                        if function_header.modifiers.is_none() {
+                                            function_header.modifiers = Some(Vec::new());
+                                        }
+                                        function_header.modifiers.as_mut().unwrap().push(
+                                            ModifierCall {
+                                                arguments: modifier_args,
+                                                identifier: _identifier.to_owned(),
+                                            },
+                                        );
+
+                                        pad = index + iteration + 2;
+                                        state = FunctionHeaderState::Modifiers;
                                     }
 
-                                    if function_header.modifiers.is_none() {
-                                        function_header.modifiers = Some(Vec::new());
+                                    _ => {
+                                        if function_header.modifiers.is_none() {
+                                            function_header.modifiers = Some(Vec::new());
+                                        }
+                                        function_header.modifiers.as_mut().unwrap().push(
+                                            ModifierCall {
+                                                arguments: None,
+                                                identifier: _identifier.to_owned(),
+                                            },
+                                        );
+                                        state = FunctionHeaderState::Modifiers;
                                     }
-                                    function_header.modifiers.as_mut().unwrap().push(
-                                        ModifierCall {
-                                            arguments: modifier_args,
-                                            identifier: _identifier.to_owned(),
-                                        },
-                                    );
-
-                                    pad = index + iteration + 2;
-                                    state = FunctionHeaderState::Modifiers;
                                 }
-
-                                _ => {
-                                    if function_header.modifiers.is_none() {
-                                        function_header.modifiers = Some(Vec::new());
-                                    }
-                                    function_header.modifiers.as_mut().unwrap().push(
-                                        ModifierCall {
-                                            arguments: None,
-                                            identifier: _identifier.to_owned(),
-                                        },
-                                    );
-                                    state = FunctionHeaderState::Modifiers;
-                                }
+                            } else {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                    "Unprocessible entity for function declaration",
+                                ))
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                             }
-                        } else {
-                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                "Unprocessible entity for function declaration",
-                            ))
-                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                         }
                     }
                 }
@@ -212,6 +241,10 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                 if let FunctionHeaderState::None
                 | FunctionHeaderState::Keyword
                 | FunctionHeaderState::Identifier
+                | FunctionHeaderState::Array
+                | FunctionHeaderState::MemLocation
+                | FunctionHeaderState::VarName
+                | FunctionHeaderState::VarVisibility
                 | FunctionHeaderState::Returns = state
                 {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(
@@ -244,6 +277,62 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                         ))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                     }
+                }
+            }
+
+            Token::OpenSquareBracket => {
+                if let FunctionHeaderState::Visibility | FunctionHeaderState::Returns = state {
+                    let mut iteration = 0;
+                    let mut open_context = 0;
+
+                    for tkn in &header_tokens[index..] {
+                        match tkn {
+                            Token::OpenSquareBracket => open_context += 1,
+                            Token::CloseSquareBracket => {
+                                open_context -= 1;
+                                if open_context == 0 {
+                                    break;
+                                }
+                            }
+                            _ => {}
+                        }
+
+                        iteration += 1;
+                    }
+
+                    if open_context != 0 {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                            "Unprocessible entity for function declaration",
+                        ))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    }
+
+                    let _size = &header_tokens[index + 1..iteration + index];
+
+                    if !_size.is_empty() {
+                        function_header.size = Some(_size.to_vec().to_string())
+                    }
+
+                    function_header.is_array = true;
+                    pad = iteration + index + 1;
+                    state = FunctionHeaderState::Array;
+                } else {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                        "Unprocessible entity for function declaration",
+                    ))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                }
+            }
+
+            Token::Memory | Token::Calldata | Token::Storage => {
+                if let FunctionHeaderState::Array = state {
+                    function_header.location = Some(token.to_owned());
+                    state = FunctionHeaderState::MemLocation;
+                } else {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                        "Unprocessible entity for function declaration",
+                    ))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                 }
             }
 
@@ -299,23 +388,46 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                                 }
                             }
 
-                            let arg = Variant::process_args(split);
-                            if arg.is_err() {
-                                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                                    "{} {}",
-                                    arg.as_ref().err().unwrap(),
-                                    split.to_vec().to_string()
-                                )))
-                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                            match split.first().unwrap() {
+                                Token::Function => {
+                                    let function_header_arg =
+                                        parse_function_header(split.to_vec(), line);
+
+                                    if function_header.arguments.is_none() {
+                                        function_header.arguments = Some(Vec::new());
+                                    }
+                                    function_header.arguments.as_mut().unwrap().push(
+                                        ArgType::Function(FunctionHeader {
+                                            r#type: FunctionType::Variable,
+                                            ..function_header_arg
+                                        }),
+                                    );
+                                }
+                                _ => {
+                                    let arg = Variant::process_args(split);
+                                    if arg.is_err() {
+                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                            &format!(
+                                                "{} {}",
+                                                arg.as_ref().err().unwrap(),
+                                                split.to_vec().to_string()
+                                            ),
+                                        ))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        )
+                                    }
+                                    if function_header.arguments.is_none() {
+                                        function_header.arguments = Some(Vec::new());
+                                    }
+                                    function_header
+                                        .arguments
+                                        .as_mut()
+                                        .unwrap()
+                                        .push(ArgType::Variant(arg.unwrap()));
+                                }
                             }
-                            if function_header.arguments.is_none() {
-                                function_header.arguments = Some(Vec::new());
-                            }
-                            function_header
-                                .arguments
-                                .as_mut()
-                                .unwrap()
-                                .push(arg.unwrap());
                         }
                     }
 
@@ -399,24 +511,43 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
             }
 
             Token::External | Token::Internal | Token::Public | Token::Private => {
-                if let FunctionHeaderState::None
-                | FunctionHeaderState::Keyword
-                | FunctionHeaderState::Identifier
-                | FunctionHeaderState::Returns = state
+                if let FunctionHeaderState::Visibility
+                | FunctionHeaderState::Returns
+                | FunctionHeaderState::Array = state
                 {
-                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                        "Unprocessible entity for function declaration",
-                    ))
-                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-                } else {
-                    if function_header.visibility.is_some() {
+                    if function_header.name.is_some() {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                            "Double declaration for function visibility",
+                            "Unprocessible entity for function declaration",
                         ))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                     }
-                    function_header.visibility = Some(token.clone());
-                    state = FunctionHeaderState::Visibility;
+
+                    function_header.var_visibility = Some(token.to_owned());
+                    state = FunctionHeaderState::VarVisibility;
+                } else {
+                    if let FunctionHeaderState::None
+                    | FunctionHeaderState::Keyword
+                    | FunctionHeaderState::Identifier
+                    | FunctionHeaderState::Array
+                    | FunctionHeaderState::MemLocation
+                    | FunctionHeaderState::VarName
+                    | FunctionHeaderState::VarVisibility
+                    | FunctionHeaderState::Returns = state
+                    {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                            "Unprocessible entity for function declaration",
+                        ))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    } else {
+                        if function_header.visibility.is_some() {
+                            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                "Double declaration for function visibility",
+                            ))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        }
+                        function_header.visibility = Some(token.clone());
+                        state = FunctionHeaderState::Visibility;
+                    }
                 }
             }
 
@@ -424,6 +555,10 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                 if let FunctionHeaderState::None
                 | FunctionHeaderState::Keyword
                 | FunctionHeaderState::Identifier
+                | FunctionHeaderState::Array
+                | FunctionHeaderState::MemLocation
+                | FunctionHeaderState::VarName
+                | FunctionHeaderState::VarVisibility
                 | FunctionHeaderState::Returns = state
                 {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(
@@ -446,6 +581,10 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                 if let FunctionHeaderState::None
                 | FunctionHeaderState::Keyword
                 | FunctionHeaderState::Identifier
+                | FunctionHeaderState::Array
+                | FunctionHeaderState::MemLocation
+                | FunctionHeaderState::VarName
+                | FunctionHeaderState::VarVisibility
                 | FunctionHeaderState::Returns = state
                 {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(

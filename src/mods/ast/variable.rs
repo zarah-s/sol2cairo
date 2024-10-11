@@ -1,9 +1,6 @@
 use crate::mods::utils::types::{value::Value, variant::Variant};
 
-use super::{
-    function::{FunctionHeader, FunctionPTRDetails},
-    mapping::MappingAST,
-};
+use super::{function::FunctionHeader, mapping::MappingAST};
 
 #[derive(Debug)]
 
@@ -11,7 +8,7 @@ pub enum VariableType {
     // Tupple,
     Mapping(MappingAST),
     Straight(Variant),
-    FunctionPTR(FunctionPTRDetails, FunctionHeader),
+    FunctionPTR(FunctionHeader),
 }
 
 #[derive(Debug)]
