@@ -1,29 +1,9 @@
-use crate::mods::{
-    constants::constants::FILE_PATH,
-    functions::helpers::global::validate_identifier,
-    types::{
-        compiler_errors::{CompilerError, SyntaxError},
-        line_descriptors::LineDescriptions,
-        token::{TTokenTrait, Token},
-    },
-};
-
-#[derive(Debug)]
-pub struct LibraryImplementation {
-    pub library_identifier: String,
-    pub line: String,
-    pub data_type: String,
-    pub is_array: bool,
-    pub array_size: Option<String>,
-}
-
-enum State {
-    None,
-    Declaration,
-    LibDefinition,
-    For,
-    DataType,
-}
+use crate::mods::ast::lib_implementation::{LibImplState, LibraryImplementation};
+use crate::mods::constants::constants::FILE_PATH;
+use crate::mods::errors::error::{CompilerError, SyntaxError};
+use crate::mods::lexer::{lexer::TTokenTrait, tokens::Token};
+use crate::mods::utils::functions::global::{get_env_vars, validate_identifier};
+use crate::mods::utils::types::line_descriptors::LineDescriptions;
 
 pub fn parse_lib_implementations(
     lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>,
@@ -48,13 +28,13 @@ pub fn parse_lib_implementations(
                     first_element.to_string()
                 ))
                 .throw_with_file_info(
-                    &std::env::var(FILE_PATH).unwrap(),
+                    &get_env_vars(FILE_PATH).unwrap(),
                     lexem.first().unwrap().line,
                 )
             }
         }
 
-        let mut state = State::None;
+        let mut state = LibImplState::None;
         let mut lib_identifier = String::new();
         let mut data_type = String::new();
         let mut is_array = false;
@@ -67,26 +47,26 @@ pub fn parse_lib_implementations(
                 }
                 match token {
                     Token::Using => {
-                        if let State::None = state {
-                            state = State::Declaration;
+                        if let LibImplState::None = state {
+                            state = LibImplState::Declaration;
                         } else {
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
                     Token::Space => {}
 
                     Token::For => {
-                        if let State::LibDefinition = state {
-                            state = State::For;
+                        if let LibImplState::LibDefinition = state {
+                            state = LibImplState::For;
                         } else {
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -96,48 +76,48 @@ pub fn parse_lib_implementations(
                     | Token::Bytes(_)
                     | Token::Address
                     | Token::String => {
-                        if let State::For = state {
+                        if let LibImplState::For = state {
                             data_type.push_str(&token.to_string());
-                            state = State::DataType;
+                            state = LibImplState::DataType;
                         } else {
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line);
                         }
                     }
 
                     Token::Identifier(_identifier) => {
-                        if let State::Declaration = state {
+                        if let LibImplState::Declaration = state {
                             validate_identifier(&_identifier).unwrap_or_else(|err| {
                                 CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
                                     .throw_with_file_info(
-                                        &std::env::var(FILE_PATH).unwrap(),
+                                        &get_env_vars(FILE_PATH).unwrap(),
                                         lex.line,
                                     )
                             });
                             lib_identifier.push_str(_identifier);
-                            state = State::LibDefinition;
-                        } else if let State::For = state {
+                            state = LibImplState::LibDefinition;
+                        } else if let LibImplState::For = state {
                             validate_identifier(&_identifier).unwrap_or_else(|err| {
                                 CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
                                     .throw_with_file_info(
-                                        &std::env::var(FILE_PATH).unwrap(),
+                                        &get_env_vars(FILE_PATH).unwrap(),
                                         lex.line,
                                     )
                             });
                             data_type.push_str(_identifier);
-                            state = State::DataType;
+                            state = LibImplState::DataType;
                         } else {
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line);
                         }
                     }
 
                     Token::OpenSquareBracket => {
-                        if let State::DataType = state {
+                        if let LibImplState::DataType = state {
                             is_array = true;
                             let close_index = &lex.data[index + 1..]
                                 .iter()
@@ -158,7 +138,7 @@ pub fn parse_lib_implementations(
                             } else {
                                 CompilerError::SyntaxError(SyntaxError::MissingToken("]"))
                                     .throw_with_file_info(
-                                        &std::env::var(FILE_PATH).unwrap(),
+                                        &get_env_vars(FILE_PATH).unwrap(),
                                         lex.line,
                                     );
                             }
@@ -166,7 +146,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -175,7 +155,7 @@ pub fn parse_lib_implementations(
                             CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                 &token.to_string(),
                             ))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line)
                         }
                     }
 
@@ -183,7 +163,7 @@ pub fn parse_lib_implementations(
                         CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                             &_other.to_string(),
                         ))
-                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line);
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line);
                     }
                 }
             }

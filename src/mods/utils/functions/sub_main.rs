@@ -2,25 +2,23 @@ use std::env;
 
 use crate::mods::{
     constants::constants::FILE_PATH,
-    functions::{
-        controllers::process_file_contents::process_file_contents,
-        helpers::global::validate_identifier,
+    errors::error::{CompilerError, SyntaxError},
+    lexer::{
+        lexer::{TTokenTrait, TVecExtension},
+        tokens::Token,
     },
-    types::{
-        compiler_errors::{CompilerError, SyntaxError},
+    parser::{
+        custom_error::parse_custom_errors, event::parse_events, function::parse_functions,
+        lib_implementation::parse_lib_implementations, r#enum::parse_enums,
+        r#struct::parse_structs, variable::parse_variables,
+    },
+    utils::types::{
         context::{TContextFn, TerminationTypeContext, VariantContext},
-        identifiers::{
-            custom_error::parse_custom_errors,
-            event::parse_events,
-            lib_implementation::parse_lib_implementations,
-            r#enum::parse_enums,
-            r#struct::{StructIdentifier, TStructIdentifier},
-            variable::parse_variables,
-        },
         line_descriptors::{LineDescriptions, TStringDescriptor, TTokenDescriptor},
-        token::{TTokenTrait, TVecExtension, Token},
     },
 };
+
+use super::{global::validate_identifier, process_file_contents::process_file_contents};
 
 pub async fn compile_source_code(args: Vec<String>) {
     let file_path = &args.last();
@@ -83,18 +81,14 @@ pub async fn compile_source_code(args: Vec<String>) {
                 }
 
                 if header_tokens.strip_spaces().is_empty() {
-                    CompilerError::SyntaxError(
-                        crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
-                    )
-                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                    CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 }
 
                 if header_tokens.strip_spaces().len() != 2 {
-                    CompilerError::SyntaxError(
-                        crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                            header_tokens.to_string().trim(),
-                        ),
-                    )
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                        header_tokens.to_string().trim(),
+                    ))
                     .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                 } else {
                     if let Token::Identifier(identifier) =
@@ -109,28 +103,25 @@ pub async fn compile_source_code(args: Vec<String>) {
                         });
                         lib_identifier = identifier.to_owned();
                     } else {
-                        CompilerError::SyntaxError(
-                            crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                                &format!(
-                                    "Expecting identifier but found {}",
-                                    header_tokens.strip_spaces().last().unwrap().to_string()
-                                ),
-                            ),
-                        )
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "Expecting identifier but found {}",
+                            header_tokens.strip_spaces().last().unwrap().to_string()
+                        )))
                         .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
                     }
                 }
             }
         }
 
-        let _ = StructIdentifier::parse_structs(structs);
+        let _structs = parse_structs(structs);
         let _ = parse_enums(enums);
 
         let _errs = parse_custom_errors(errors);
         let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
-        parse_variables(vars);
-
+        let _ret = parse_variables(vars);
+        parse_functions(functions);
+        // println!("{:#?}", _structs);
         // println!(
         //     "STRUCTS=>{:#?}\n\nVARS=>{:#?}\n\nENUMS=>{:#?}\n\nFUNCTIONS=>{:#?}\n\nERRORS=>{:#?}\n\nIMPL=>{:#?}\n\nHEADER=>{:#?}\n\n\n\n\n\n\n\n\n\n\n\n\n\n",
         //     structs, vars, enums, functions, errors, lib_implementations, lib_header
@@ -651,6 +642,7 @@ fn seperate_variant_variants(
     let mut tokens: Vec<Token> = Vec::new();
     let mut combined: Vec<LineDescriptions<Vec<Token>>> = Vec::new();
 
+    // let mut is_mapping = false;
     for (parent_index, _line_desc) in line_desc.iter().enumerate() {
         for (index, token) in _line_desc.data.iter().enumerate() {
             tokens.push(token.clone());
@@ -678,18 +670,12 @@ fn seperate_variant_variants(
                     terminator_type = TerminationTypeContext::Enum;
                 }
                 Token::Function | Token::Receive | Token::Fallback | Token::Constructor => {
-                    if parent_index > 0 {
-                        validate_clash(
-                            terminator_type,
-                            &tokens,
-                            &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
-                            Some(opened_braces_count),
-                        )
-                    }
-                    if is_interface {
-                        terminator_type = TerminationTypeContext::Variable
-                    } else {
-                        terminator_type = TerminationTypeContext::Function
+                    if TerminationTypeContext::Struct != terminator_type {
+                        if is_interface {
+                            terminator_type = TerminationTypeContext::Variable
+                        } else {
+                            terminator_type = TerminationTypeContext::Function
+                        }
                     }
                 }
                 Token::Error => {
@@ -734,15 +720,42 @@ fn seperate_variant_variants(
                     }
                 }
                 Token::Mapping => {
-                    if opened_braces_count == 1 {
-                        if parent_index > 0 {
-                            validate_clash(
-                                terminator_type,
-                                &tokens,
-                                &Some(&line_desc.get(parent_index - 1).unwrap().to_string()),
-                                Some(opened_braces_count),
-                            )
+                    if let TerminationTypeContext::None = terminator_type {
+                        //TODO: NOTHING
+                    } else {
+                        if index > 0 {
+                            let mut space_count = 0;
+                            for c in &_line_desc.data[..index] {
+                                match c {
+                                    Token::Space => space_count += 1,
+                                    _ => {}
+                                }
+                            }
+                            let _raw = _line_desc.data.strip_spaces();
+                            let find = _raw.get(index - (1 + space_count));
+                            if let Some(_tkn) = find {
+                                match _tkn {
+                                    Token::Gt => (),
+                                    _ => {
+                                        CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
+                                            .throw_with_file_info(
+                                                &std::env::var(FILE_PATH).unwrap(),
+                                                _line_desc.line,
+                                            );
+                                    }
+                                }
+                            }
+                        } else {
+                            if parent_index > 0 && opened_braces_count == 1 {
+                                CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
+                                    .throw_with_file_info(
+                                        &std::env::var(FILE_PATH).unwrap(),
+                                        line_desc.get(parent_index - 1).unwrap().line,
+                                    );
+                            }
                         }
+                    }
+                    if opened_braces_count == 1 {
                         terminator_type = TerminationTypeContext::Variable
                     }
                 }
@@ -760,6 +773,7 @@ fn seperate_variant_variants(
                 }
 
                 Token::SemiColon => {
+                    // is_mapping = false;
                     if opened_braces_count == 1 {
                         if !tokens.is_empty() {
                             combined.push(LineDescriptions {
@@ -781,6 +795,11 @@ fn seperate_variant_variants(
 
                             TerminationTypeContext::Error => {
                                 errors.push(combined.clone());
+                                combined.clear();
+                            }
+
+                            TerminationTypeContext::Function => {
+                                vars.push(combined.clone());
                                 combined.clear();
                             }
                             TerminationTypeContext::Event => {

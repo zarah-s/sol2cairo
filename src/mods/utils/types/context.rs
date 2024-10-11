@@ -1,10 +1,10 @@
-use crate::mods::constants::constants::FILE_PATH;
-
-use super::{
-    compiler_errors::{CompilerError, SyntaxError},
-    line_descriptors::{LineDescriptions, TStringDescriptor},
-    token::Token,
+use crate::mods::{
+    constants::constants::FILE_PATH,
+    errors::error::{CompilerError, SyntaxError},
+    lexer::tokens::Token,
 };
+
+use super::line_descriptors::{LineDescriptions, TStringDescriptor};
 
 #[derive(PartialEq, Debug)]
 pub enum VariantContext {

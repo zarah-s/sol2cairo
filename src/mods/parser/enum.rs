@@ -1,19 +1,14 @@
+use crate::mods::errors::error::{CompilerError, SyntaxError};
+use crate::mods::utils::functions::global::{get_env_vars, validate_identifier};
 use crate::mods::{
-    constants::constants::FILE_PATH,
-    functions::helpers::global::validate_identifier,
-    types::{
-        compiler_errors::{CompilerError, SyntaxError},
-        line_descriptors::LineDescriptions,
-        token::{TTokenTrait, TVecExtension, Token},
-    },
+    ast::r#enum::EnumAST, constants::constants::FILE_PATH,
+    utils::types::line_descriptors::LineDescriptions,
 };
 
-#[derive(Debug)]
-pub struct EnumIdentifier {
-    pub identifier: String,
-    pub line: String,
-    pub variants: Vec<String>,
-}
+use crate::mods::lexer::{
+    lexer::{TTokenTrait, TVecExtension},
+    tokens::Token,
+};
 
 #[derive(Debug)]
 enum EnumState {
@@ -22,8 +17,8 @@ enum EnumState {
     Identifier,
 }
 
-pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumIdentifier> {
-    let mut enums: Vec<EnumIdentifier> = Vec::new();
+pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumAST> {
+    let mut enums: Vec<EnumAST> = Vec::new();
 
     for lexem in lexems {
         let mut enum_identifier = String::new();
@@ -45,7 +40,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                     first_element.to_string()
                 ))
                 .throw_with_file_info(
-                    &std::env::var(FILE_PATH).unwrap(),
+                    &get_env_vars(FILE_PATH).unwrap(),
                     lexem.first().unwrap().line,
                 )
             }
@@ -72,35 +67,29 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
             }
 
             if header_tokens.strip_spaces().is_empty() {
-                CompilerError::SyntaxError(
-                    crate::mods::types::compiler_errors::SyntaxError::MissingToken("{"),
-                )
-                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
             }
 
             if header_tokens.strip_spaces().len() != 2 {
-                CompilerError::SyntaxError(
-                    crate::mods::types::compiler_errors::SyntaxError::SyntaxError(
-                        header_tokens.to_string().trim(),
-                    ),
-                )
-                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    header_tokens.to_string().trim(),
+                ))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
             } else {
                 if let Token::Identifier(identifier) = header_tokens.strip_spaces().last().unwrap()
                 {
                     validate_identifier(&identifier).unwrap_or_else(|err| {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
-                            .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
                     });
                     enum_identifier = identifier.to_owned();
                 } else {
-                    CompilerError::SyntaxError(
-                        crate::mods::types::compiler_errors::SyntaxError::SyntaxError(&format!(
-                            "Expecting identifier but found {}",
-                            header_tokens.strip_spaces().last().unwrap().to_string()
-                        )),
-                    )
-                    .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), header_line)
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "Expecting identifier but found {}",
+                        header_tokens.strip_spaces().last().unwrap().to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), header_line)
                 }
             }
         }
@@ -125,7 +114,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                                 let _ = validate_identifier(&_variant).unwrap_or_else(|err| {
                                     CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
                                         .throw_with_file_info(
-                                            &std::env::var(FILE_PATH).unwrap(),
+                                            &get_env_vars(FILE_PATH).unwrap(),
                                             lex.line,
                                         )
                                 });
@@ -135,7 +124,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line)
                             }
                         }
                         Token::Coma => {
@@ -145,7 +134,7 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line)
                             }
                         }
                         Token::CloseBraces => {
@@ -154,18 +143,18 @@ pub fn parse_enums(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<EnumId
                                 CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                     &token.to_string(),
                                 ))
-                                .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line)
+                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line)
                             }
                         }
                         _other => CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                             &_other.to_string(),
                         ))
-                        .throw_with_file_info(&std::env::var(FILE_PATH).unwrap(), lex.line),
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), lex.line),
                     }
                 }
             }
 
-            let enum_construct = EnumIdentifier {
+            let enum_construct = EnumAST {
                 identifier: enum_identifier,
                 line: lexem[0].line.to_string(),
                 variants,

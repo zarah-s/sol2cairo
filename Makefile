@@ -23,4 +23,4 @@ t:
 	cargo test
 
 run: 
-	./target/release/solc contracts/Contract.sol
+	./target/release/pydeC contracts/Contract.sol

@@ -1,6 +1,6 @@
 pub const DATA_TYPES: [&str; 6] = ["bytes", "uint", "int", "address", "string", "bool"];
 
-pub const KEYWORDS: [&str; 72] = [
+pub const KEYWORDS: [&str; 73] = [
     "contract",
     "mapping",
     "solidity",
@@ -73,11 +73,12 @@ pub const KEYWORDS: [&str; 72] = [
     "immutable",
     "true",
     "false",
+    "anonymous",
 ];
 
-pub const SYMBOLS: [char; 25] = [
+pub const SYMBOLS: [char; 26] = [
     '+', '-', '/', '*', '(', ')', '[', ']', '{', '}', '>', '<', '.', '=', '!', '%', ';', '\'', '"',
-    ',', '|', '&', '~', '^', ':',
+    ',', '|', '&', '~', '^', ':', '?',
 ];
 
 pub const INTEGER_SIZES: [u16; 32] = [

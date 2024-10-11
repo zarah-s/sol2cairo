@@ -1,5 +1,5 @@
 [package]
-name = "solc"
+name = "pydeC"
 version = "0.1.0"
 edition = "2021"
 authors = ["Victor Samuel <zarah.zrh2@gmail.com>"]

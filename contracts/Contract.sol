@@ -2,30 +2,63 @@
 pragma solidity ^0.8.24;
 
 library Name {
-        uint oi =1+2+3+(y+h)+uint(2)/2;
-//         bytes public buffer = new bytes(2);
+        uint oi =1>=1&& !true?&1:1+=1;
+        mapping (sd => mapping (address => uint) )  name;
+        mapping (address => uint) name;
+ address payable[] ddd;
+function ddd(uint[] storage osad,address payable owner) external Only(msg.sender) another  gasless returns(address memory payable[10] user,Layout.Pool memory pool)  {
+        bytes public buffer = new bytes(2);
+
+}
+    uint oi = (1 days).count(payable(address(jane)));
+
+    mapping(uint256 => function (uint256, uint256) external returns (uint256)) funcPointers;
+
+ function executeFunctions(
+        function (uint256, uint256) external returns (uint256)[] memory funcArray,
+        uint256 a,
+        uint256 b
+    ) external view returns (uint256[] memory results) {
+        results = new uint256[](funcArray.length); // Create an array to store the results
+        
+        // Loop through the array and call each function
+        for (uint256 i = 0; i < funcArray.length; i++) {
+            results[i] = funcArray[i](a, b); // Execute each function pointer
+        }
+    }
 
 
-//     uint oi = (1 days).count(payable(address(jane)));
+  function executeFunction(
+        function (uint256, uint256) external returns (uint256) func,
+        uint256[] a,
+        uint256 b
+    ) external view returns (uint256) {
+        return func(a, b); // Calls the passed function pointer
+    }
 
-//     address yo = address(msg.sender);
 
+  struct FunctionHolder {
+        function (uint256, uint256) external returns (uint256) funcPointerStr;
 
-//     address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
-//      bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
-//      bytes bts = bytes(0x1);
-//     jane owen
-//      = string('can"t do').toBytes();
-//      ad dfd =(((((((string((5)))).add()).def().oi()))));
-//      bool oi = bool(true).concat();
-//      bool cd = (((((true)))));
-// bytes hexs = hex"adfadfad";
-//      sdfd[] public constant jane=[1,2,3,4,5][get_random().clone()];
-// event Transfer(uind.asd[(((100)))] indexed,address indexed);
-// sd yo = new Toes[]((2000_000).add()).com();
-//  Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
-// //  function() internal  view returns(address) selectedFunction;
-//     uint sdf = uint8(wed).to_bts().add();
+    }
+    address yo = address(msg.sender);
+function (uint256, uint256) external returns (uint256)[20] public functionPointer;
+
+    address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
+     bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
+     bytes bts = bytes(0x1);
+    jane owen
+     = string('can"t do').toBytes();
+     ad dfd =(((((((string((5)))).add()).def().oi()))));
+     bool oi = bool(true).concat();
+     bool cd = (((((true)))));
+bytes hexs = hex"adfadfad";
+     sdfd[] public jane=[1,2,3,4,5][get_random([1,2,3,4,54]).clone()];
+event Transfer(uind.asd[(((100)))] indexed,address payable[j[sdsd]] indexed ) anonymous;
+sd[2000_000] yo = new Toes[]((2000_000).add()).com();
+ Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+ function() internal  view returns(address) selectedFunction;
+    uint sdf = uint8(wed).to_bts().add();
 
     function oi() {
         {}
@@ -45,14 +78,18 @@ library Name {
     }
 
      struct Layout {
+        ads.o[] sdff;
         address[(100**10)] owner;
+        address payable[2] dd;
         uint256 collection_count;
-        mapping(uint256 => Types.Collection) collection_by_id;
+        function (uint256, uint256) external returns (uint256) funcPointerStr;
+        mapping(sd.ds => Types.Collection) collection_by_id;
         mapping(string => Types.Collection) collection_by_name;
         mapping(uint => mapping(uint => mapping(uint => uint))) totalSupply;
-        mapping(uint => mapping(Types.Slot => address)) accessory;
-        mapping(address => mapping(uint256 => mapping(uint => Types.Token[]))) minted;
+        mapping(uint => mapping(      Types.Slot =>       address payable[]    )) accessory;
+        mapping(address => mapping(uint256 => mapping(uint => Types.Token[jj[1]]))) minted;
     }
+
 
     struct No_2sd {
         lib.dsd[200e18*2/4-1+8] name;
@@ -147,7 +184,7 @@ contract Yds is OI{
 
 library Lb{ sld oi;
     using Oi for uint[];
-    error Lib_ERROR(Oi.sdf[(1000*23)] chii,Shit,uint256,_);
+    error Lib_ERROR(Oi.sdf[(1000*23)] chii,Shit,uint256,address payable[john[asd]] oiii);
 
     function dd() 
     {}

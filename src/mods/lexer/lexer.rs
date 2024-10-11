@@ -1,187 +1,27 @@
-use crate::mods::constants::constants::{DATA_TYPES, INTEGER_SIZES, KEYWORDS, SYMBOLS};
+use crate::mods::{
+    constants::constants::{DATA_TYPES, INTEGER_SIZES, KEYWORDS, SYMBOLS},
+    errors::error::{CompilerError, SyntaxError},
+    utils::types::visibility::Visibility,
+};
 
-#[derive(Debug, PartialEq, Clone)]
-pub enum Token {
-    Identifier(String),
-    Contract,
-    Solidity,
-    Library,
-    Using,
-    Block,
-    Tx,
-    This,
-    Hex,
-    Colon,
-    Abstract,
-    Emit,
-    Call,
-    Import,
-    From,
-    Delegatecall,
-    Payable,
-    Indexed,
-    Modifier,
-    Interface,
-    Revert,
-    Space,
-    Event,
-    Bytes(Option<u16>),
-    Assert,
-    Require,
-    Storage,
-    Error,
-    Override,
-    Push,
-    Pop,
-    While,
-    Delete,
-    Enum,
-    Immutable,
-    Is,
-    Mutable,
-    Constant,
-    Internal,
-    External,
-    Virtual,
-    Calldata,
-    New,
-    Mapping,
-    Msg,
-    Pragma,
-    Constructor,
-    Address,
-    Private,
-    Struct,
-    Function,
-    Public,
-    View,
-    Returns,
-    Pure,
-    Return,
-    Memory,
-    Uint(Option<u16>),
-    Wei,
-    Gwei,
-    Szabo,
-    Finney,
-    Ether,
-    Seconds,
-    Minutes,
-    Hours,
-    Days,
-    Weeks,
-    Years,
-    Receive,
-    Fallback,
-    Cron,
-    Gasless,
-    Int(Option<u16>),
-    String,
-    Bool,
-    If,
-    Else,
-    For,
-    Plus,
-    Minus,
-    Divide,
-    Multiply,
-    OpenParenthesis,
-    CloseParenthesis,
-    OpenSquareBracket,
-    CloseSquareBracket,
-    OpenBraces,
-    CloseBraces,
-    Gt,
-    Lt,
-    Dot,
-    Equals,
-    Bang,
-    Modulu,
-    SemiColon,
-    Quotation,
-    Coma,
-    Or,
-    And,
-    Xor,
-    Not,
-    True,
-    False,
-}
-
-#[derive(Debug)]
-pub enum Visibility {
-    Public,
-    Internal,
-    External,
-    Private,
-    None,
-}
-
-#[derive(Debug)]
-pub enum Mutability {
-    Constant,
-    Immutable,
-    Mutable,
-    None,
-}
-
-impl Mutability {
-    pub fn get_mutability_from_token(token: &Token) -> Self {
-        match token {
-            Token::Immutable => Mutability::Immutable,
-            Token::Constant => Mutability::Constant,
-            Token::Mutable => Mutability::Mutable,
-            _ => Mutability::None,
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        match &self {
-            Mutability::Immutable => Token::Immutable.to_string(),
-            Mutability::Constant => Token::Constant.to_string(),
-            Mutability::Mutable => Token::Mutable.to_string(),
-            _ => unreachable!(),
-        }
-    }
-}
-
-impl Visibility {
-    pub fn get_visibility_from_token(token: &Token) -> Self {
-        match token {
-            Token::Public => Visibility::Public,
-            Token::Internal => Visibility::Internal,
-            Token::External => Visibility::External,
-            Token::Private => Visibility::Private,
-            _ => Visibility::None,
-        }
-    }
-
-    pub fn to_string(&self) -> String {
-        match &self {
-            Visibility::External => Token::External.to_string(),
-            Visibility::Public => Token::Public.to_string(),
-            Visibility::Internal => Token::Internal.to_string(),
-            Visibility::Private => Token::Private.to_string(),
-            _ => unreachable!(),
-        }
-    }
-}
+use super::tokens::Token;
 
 pub trait TTokenTrait {
     fn to_string(&self) -> String;
     fn extract_visibility(&self) -> Visibility;
-    fn extract_mutability(&self) -> Mutability;
+    // fn extract_mutability(&self) -> Mutability;
     fn is_symbol(&self) -> bool;
     fn is_keyword(&self) -> bool;
     fn is_string_literal(&self) -> bool;
     fn is_integer_literal(&self) -> bool;
-    fn is_boolean(&self) -> bool;
+    // fn is_boolean(&self) -> bool;
     fn is_data_type(&self) -> bool;
 }
 
 pub trait TVecExtension {
     fn to_string(&self) -> String;
     fn strip_spaces(&self) -> Self;
+    fn split_coma(&self) -> Vec<Vec<Token>>;
 }
 
 pub trait TStringExtension {
@@ -212,6 +52,59 @@ impl TVecExtension for Vec<Token> {
 
         result
     }
+
+    fn split_coma(&self) -> Vec<Vec<Token>> {
+        let mut open_context = 0;
+        let mut returns: Vec<Vec<Token>> = Vec::new();
+        let mut combined: Vec<Token> = Vec::new();
+        for (index, token) in self.iter().enumerate() {
+            match token {
+                Token::Coma => {
+                    if open_context == 0 {
+                        returns.push(combined.clone());
+                        combined.clear();
+                        continue;
+                    }
+                }
+                Token::OpenParenthesis => {
+                    open_context += 1;
+                }
+                Token::OpenBraces => {
+                    open_context += 1;
+                }
+                Token::OpenSquareBracket => {
+                    open_context += 1;
+                }
+
+                Token::CloseBraces => {
+                    open_context -= 1;
+                }
+                Token::CloseParenthesis => {
+                    open_context -= 1;
+                }
+                Token::CloseSquareBracket => {
+                    open_context -= 1;
+                }
+                _ => {}
+            }
+            combined.push(token.clone());
+
+            if index == self.len() - 1 {
+                returns.push(combined.clone());
+                combined.clear();
+            }
+        }
+
+        if open_context != 0 {
+            CompilerError::SyntaxError(SyntaxError::MissingToken(&format!(
+                "Missing closing param for {}",
+                self.to_vec().to_string()
+            )))
+            .throw();
+        }
+
+        returns
+    }
 }
 
 impl TVecExtension for Vec<&Token> {
@@ -235,6 +128,58 @@ impl TVecExtension for Vec<&Token> {
         }
 
         result
+    }
+    fn split_coma(&self) -> Vec<Vec<Token>> {
+        let mut open_context = 0;
+        let mut returns: Vec<Vec<Token>> = Vec::new();
+        let mut combined: Vec<Token> = Vec::new();
+        for (index, token) in self.iter().enumerate() {
+            match token {
+                Token::Coma => {
+                    if open_context == 0 {
+                        returns.push(combined.clone());
+                        combined.clear();
+                        continue;
+                    }
+                }
+                Token::OpenParenthesis => {
+                    open_context += 1;
+                }
+                Token::OpenBraces => {
+                    open_context += 1;
+                }
+                Token::OpenSquareBracket => {
+                    open_context += 1;
+                }
+
+                Token::CloseBraces => {
+                    open_context -= 1;
+                }
+                Token::CloseParenthesis => {
+                    open_context -= 1;
+                }
+                Token::CloseSquareBracket => {
+                    open_context -= 1;
+                }
+                _ => {}
+            }
+            combined.push(token.to_owned().clone());
+
+            if index == self.len() - 1 {
+                returns.push(combined.clone());
+                combined.clear();
+            }
+        }
+
+        if open_context != 0 {
+            CompilerError::SyntaxError(SyntaxError::MissingToken(&format!(
+                "Missing closing param for {}",
+                self.to_vec().to_string()
+            )))
+            .throw();
+        }
+
+        returns
     }
 }
 
@@ -283,12 +228,12 @@ impl TTokenTrait for Token {
         }
     }
 
-    fn is_boolean(&self) -> bool {
-        match self {
-            Token::True => true,
-            _ => false,
-        }
-    }
+    // fn is_boolean(&self) -> bool {
+    //     match self {
+    //         Token::True => true,
+    //         _ => false,
+    //     }
+    // }
     fn is_integer_literal(&self) -> bool {
         is_integer_literal(self)
     }
@@ -332,9 +277,9 @@ impl TTokenTrait for Token {
     fn extract_visibility(&self) -> Visibility {
         Visibility::get_visibility_from_token(&self)
     }
-    fn extract_mutability(&self) -> Mutability {
-        Mutability::get_mutability_from_token(&self)
-    }
+    // fn extract_mutability(&self) -> Mutability {
+    //     Mutability::get_mutability_from_token(&self)
+    // }
 }
 
 impl TTokenTrait for &Token {
@@ -352,12 +297,12 @@ impl TTokenTrait for &Token {
             _ => false,
         }
     }
-    fn is_boolean(&self) -> bool {
-        match self {
-            Token::True => true,
-            _ => false,
-        }
-    }
+    // fn is_boolean(&self) -> bool {
+    //     match self {
+    //         Token::True => true,
+    //         _ => false,
+    //     }
+    // }
     fn is_integer_literal(&self) -> bool {
         is_integer_literal(self)
     }
@@ -402,9 +347,9 @@ impl TTokenTrait for &Token {
         Visibility::get_visibility_from_token(&self)
     }
 
-    fn extract_mutability(&self) -> Mutability {
-        Mutability::get_mutability_from_token(&self)
-    }
+    // fn extract_mutability(&self) -> Mutability {
+    //     Mutability::get_mutability_from_token(&self)
+    // }
 }
 
 fn is_integer_literal(input: &Token) -> bool {
@@ -448,8 +393,10 @@ fn detokenize(input: &Token) -> String {
     match input {
         Token::Contract => "contract".to_string(),
         Token::Emit => "emit".to_string(),
+        Token::QMark => "?".to_string(),
         Token::Block => "block".to_string(),
         Token::Tx => "tx".to_string(),
+        Token::Anonymous => "anonymous".to_string(),
         Token::This => "this".to_string(),
         Token::Colon => ":".to_string(),
         Token::Hex => "hex".to_string(),
@@ -577,8 +524,10 @@ fn tokenize(input: &str) -> Token {
         "revert" => Token::Revert,
         " " | "" => Token::Space,
         "emit" => Token::Emit,
+        "?" => Token::QMark,
         ":" => Token::Colon,
         "pragma" => Token::Pragma,
+        "anonymous" => Token::Anonymous,
         "tx" => Token::Tx,
         "block" => Token::Block,
         "hex" => Token::Hex,
