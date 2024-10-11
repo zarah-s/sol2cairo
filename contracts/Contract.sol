@@ -12,7 +12,11 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
 }
     uint oi = (1 days).count(payable(address(jane)));
 
+    mapping(uint256 => function (uint256, uint256) external returns (uint256)) funcPointers;
+
   struct FunctionHolder {
+        function (uint256, uint256) external returns (uint256) funcPointerStr;
+
     }
     address yo = address(msg.sender);
 function (uint256, uint256) external returns (uint256) public functionPointer;

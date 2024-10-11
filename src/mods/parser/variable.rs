@@ -102,6 +102,7 @@ fn process_var_construct(
         Token::Mapping => {
             let mut mapping = Mapping::new();
             let mut mapping_header = MappingHeader::new();
+
             process_mapping(combined, &mut mapping, &mut mapping_header)?;
 
             let mapping_construct = MappingAST {

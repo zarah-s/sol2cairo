@@ -1,4 +1,6 @@
+use crate::mods::ast::mapping::MappingReturn;
 use crate::mods::constants::constants::FILE_PATH;
+use crate::mods::parser::function::parse_function_header;
 use crate::mods::utils::types::variant::{TVariant, Variant};
 use crate::mods::{
     ast::mapping::{Mapping, MappingHeader, MappingState, MappingValue},
@@ -99,6 +101,45 @@ pub fn process_mapping(
                     ));
                 }
             }
+
+            Token::Function => {
+                if let MappingState::Gt = state {
+                    let mut iteration = 0;
+                    let mut context = 0;
+                    for tkn in &combined[index..] {
+                        match tkn {
+                            Token::OpenParenthesis => {
+                                context += 1;
+                            }
+                            Token::CloseParenthesis => {
+                                if context == 0 {
+                                    break;
+                                }
+                                context -= 1;
+                            }
+                            _ => {}
+                        }
+
+                        iteration += 1;
+                    }
+
+                    pad = iteration + index;
+
+                    let function_header =
+                        parse_function_header(combined[index..iteration + index].to_vec(), 0);
+
+                    mapping.insert(
+                        None,
+                        Some(MappingValue::Raw(MappingReturn::Function(function_header))),
+                    )?;
+                    state = MappingState::Value;
+                } else {
+                    return Err((
+                        format!("Invalid variant declaration \"{}\"", _combined.to_string()),
+                        ErrType::Syntax,
+                    ));
+                }
+            }
             Token::Uint(_)
             | Token::Int(_)
             | Token::Identifier(_)
@@ -168,9 +209,11 @@ pub fn process_mapping(
 
                     pad = iiteration + index;
 
+                    mapping.insert(
+                        None,
+                        Some(MappingValue::Raw(MappingReturn::Variant(variant.unwrap()))),
+                    )?;
                     state = MappingState::Value;
-
-                    mapping.insert(None, Some(MappingValue::Raw(variant.unwrap())))?;
                 } else if let MappingState::CloseParenthesisIdentifier = state {
                     if nested_count == 0 {
                         if let Token::Identifier(identifier) = n {

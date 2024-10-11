@@ -3,6 +3,8 @@ use crate::mods::{
     utils::types::{variant::Variant, visibility::Visibility},
 };
 
+use super::function::FunctionHeader;
+
 #[derive(Debug)]
 pub enum MappingState {
     MappingIdentity,
@@ -39,7 +41,13 @@ pub struct MappingAST {
 #[derive(Debug)]
 pub enum MappingValue {
     Mapping(Box<Mapping>),
-    Raw(Variant),
+    Raw(MappingReturn),
+}
+
+#[derive(Debug)]
+pub enum MappingReturn {
+    Function(FunctionHeader),
+    Variant(Variant),
 }
 
 #[derive(Debug)]
