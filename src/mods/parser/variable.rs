@@ -131,7 +131,6 @@ fn process_var_construct(
             let function_def = stripped[..stripped.len() - 1].to_vec();
             let func_header = parse_function_header(function_def, line);
 
-            // println!("{:#?}", func_header);
             let variable_construct = VariableAST {
                 value: None,
                 variable_type: VariableType::FunctionPTR(FunctionHeader {

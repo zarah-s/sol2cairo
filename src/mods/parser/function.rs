@@ -16,14 +16,14 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
             let mut function_header: Vec<Token> = Vec::new();
             let mut line = 0;
             let mut should_break = false;
-            for line_desc in function_lexem {
+            for line_desc in &function_lexem {
                 if line == 0 {
                     line = line_desc.line;
                 }
                 if should_break {
                     break;
                 }
-                for token in line_desc.data {
+                for token in &line_desc.data {
                     match token {
                         Token::OpenBraces => {
                             should_break = true;
@@ -31,15 +31,98 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
                         }
                         _ => {}
                     }
-                    function_header.push(token);
+                    function_header.push(token.to_owned());
                     header_iteration += 1;
                 }
             }
 
-            let header = parse_function_header(function_header, line);
-            println!("{:#?}", header);
+            let _header = parse_function_header(function_header, line);
+            let mut skipped_count = 0;
+            let mut combined: Vec<&Token> = Vec::new();
+            let mut opened_context = 0;
+            let mut opened_scope = 1;
+            for body in &function_lexem {
+                for token in &body.data {
+                    if skipped_count < header_iteration + 1 {
+                        skipped_count += 1;
+                        continue;
+                    }
+                    combined.push(token);
+
+                    match token {
+                        Token::OpenBraces => {
+                            opened_scope += 1;
+                        }
+
+                        Token::CloseBraces => {
+                            opened_scope -= 1;
+
+                            if opened_scope == 1 {
+                                process_function_body(&combined).unwrap_or_else(|err| {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            body.line,
+                                        );
+                                });
+                                combined.clear();
+                            }
+                        }
+                        Token::OpenParenthesis => {
+                            opened_context += 1;
+                        }
+
+                        Token::CloseParenthesis => {
+                            opened_context -= 1;
+                        }
+                        Token::SemiColon => {
+                            if opened_context == 0 && opened_scope == 1 {
+                                process_function_body(&combined).unwrap_or_else(|err| {
+                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            body.line,
+                                        );
+                                });
+                                combined.clear();
+                            }
+                        }
+
+                        _ => {}
+                    }
+                }
+            }
+
+            if opened_context != 0 || opened_scope != 0 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    "Unexpected context in function declaration",
+                ))
+                .throw_with_file_info(
+                    &get_env_vars(FILE_PATH).unwrap(),
+                    function_lexem.first().unwrap().line,
+                );
+            }
+
+            if !combined.is_empty() && !&combined[..combined.len() - 1].is_empty() {
+                process_function_body(&combined[..combined.len() - 1].to_vec()).unwrap_or_else(
+                    |err| {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
+                            .throw_with_file_info(
+                                &get_env_vars(FILE_PATH).unwrap(),
+                                function_lexem.last().unwrap().line,
+                            );
+                    },
+                );
+                combined.clear();
+            }
         }
     }
+}
+
+fn process_function_body(tokens: &Vec<&Token>) -> Result<(), &'static str> {
+    println!("{:?}\n\n\n\n", tokens);
+
+    Ok(())
 }
 
 pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader {
@@ -605,7 +688,7 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
 
             _ => {
                 CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                    "Unprocessible here entity for function declaration",
+                    "Unprocessible entity for function declaration",
                 ))
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }

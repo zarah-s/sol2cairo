@@ -19,10 +19,13 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
         uint256 a,
         uint256 b
     ) external view returns (uint256[] memory results) {
+        {
         results = new uint256[](funcArray.length); // Create an array to store the results
-        
+
+        }
         // Loop through the array and call each function
         for (uint256 i = 0; i < funcArray.length; i++) {
+        
             results[i] = funcArray[i](a, b); // Execute each function pointer
         }
     }
@@ -34,7 +37,7 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
         uint256 b
     ) external view returns (uint256) {
         return func(a, b); // Calls the passed function pointer
-    }
+    oi}
 
 
   struct FunctionHolder {
@@ -87,8 +90,8 @@ sd[2000_000] yo = new Toes[]((2000_000).add()).com();
         mapping(string => Types.Collection) collection_by_name;
         mapping(uint => mapping(uint => mapping(uint => uint))) totalSupply;
         mapping(uint => mapping(      Types.Slot =>       address payable[]    )) accessory;
-        mapping(address => mapping(uint256 => mapping(uint => Types.Token[jj[1]]))) minted;
-    }
+        mapping(address => mapping(uint256 => mapping(uint => Types.Token[jj[1]]))) minted;}
+    
 
 
     struct No_2sd {
