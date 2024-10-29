@@ -12,6 +12,9 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
 }
     uint oi = (1 days).count(payable(address(jane)));
 
+    constructor() owner()  oi() {
+
+    }
     mapping(uint256 => function (uint256, uint256) external returns (uint256)) funcPointers;
 
  function executeFunctions(
@@ -29,6 +32,13 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
             results[i] = funcArray[i](a, b); // Execute each function pointer
         }
     }
+
+    modifier name {
+     _;   
+    }
+
+
+    receive() external {}
 
 
   function executeFunction(

@@ -120,6 +120,7 @@ pub async fn compile_source_code(args: Vec<String>) {
         let _events = parse_events(events);
         let _ = parse_lib_implementations(lib_implementations);
         let _ret = parse_variables(vars);
+        // println!("{:#?}", functions);
         parse_functions(functions);
         // println!("{:#?}", _structs);
         // println!(
@@ -669,13 +670,17 @@ fn seperate_variant_variants(
                     }
                     terminator_type = TerminationTypeContext::Enum;
                 }
-                Token::Function | Token::Receive | Token::Fallback | Token::Constructor => {
+                Token::Function
+                | Token::Receive
+                | Token::Fallback
+                | Token::Constructor
+                | Token::Modifier => {
                     if TerminationTypeContext::Struct != terminator_type {
-                        if is_interface {
-                            terminator_type = TerminationTypeContext::Variable
-                        } else {
-                            terminator_type = TerminationTypeContext::Function
-                        }
+                        // if is_interface {
+                        //     terminator_type = TerminationTypeContext::Variable
+                        // } else {
+                        terminator_type = TerminationTypeContext::Function
+                        // }
                     }
                 }
                 Token::Error => {
@@ -972,7 +977,10 @@ fn seperate_variant_variants(
                         Some(initial) => {
                             if opened_braces_count > 0 {
                                 match initial {
-                                    Token::Library | Token::Contract | Token::Interface => {}
+                                    Token::Library
+                                    | Token::Contract
+                                    | Token::Interface
+                                    | Token::Modifier => {}
                                     _ => {
                                         CompilerError::SyntaxError(SyntaxError::UnexpectedToken(
                                             &tokens.strip_spaces()[0].to_string(),
