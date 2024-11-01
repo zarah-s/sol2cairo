@@ -8,6 +8,10 @@ library Name {
  address payable[] ddd;
 function ddd(uint[] storage osad,address payable owner) external Only(msg.sender) another  gasless returns(address memory payable[10] user,Layout.Pool memory pool)  {
         bytes public buffer = new bytes(2);
+        uint j;
+        {
+            bool i;
+        }
 
 }
     uint oi = (1 days).count(payable(address(jane)));
@@ -15,6 +19,26 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
     constructor() owner()  oi() {
 
     }
+
+        // Function that returns a function pointer
+    function getFunctionPointer() public view returns (function(uint) external pure returns (address)) {
+        return this.exampleFunction; // Return the pointer to `exampleFunction`
+    }
+
+      function getMapping() internal view returns (mapping(uint => address) storage) {
+        return myMapping;
+    }
+
+        // Function that takes a reference to a mapping in storage
+    function updateMapping(mapping(uint => address) storage sdf, uint key, address value) internal {
+        sdf[key] = value;
+    }
+
+    //     function updateBalances(KeyValue[] memory keyValueArray) public {
+    //     for (uint256 i = 0; i < keyValueArray.length; i++) {
+    //         balances[keyValueArray[i].key] = keyValueArray[i].value;
+    //     }
+    // }
     mapping(uint256 => function (uint256, uint256) external returns (uint256)) funcPointers;
 
  function executeFunctions(

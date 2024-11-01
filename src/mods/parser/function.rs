@@ -1,10 +1,12 @@
 use crate::mods::ast::function::{
-    ArgType, FunctionHeader, FunctionHeaderState, FunctionType, ModifierCall,
+    ArgRet, ArgType, FunctionHeader, FunctionHeaderState, FunctionType, ModifierCall,
 };
+use crate::mods::ast::mapping::{Mapping, MappingAST, MappingHeader};
 use crate::mods::constants::constants::FILE_PATH;
 use crate::mods::errors::error::{CompilerError, SyntaxError};
 use crate::mods::lexer::lexer::TVecExtension;
 use crate::mods::lexer::tokens::Token;
+use crate::mods::parser::mapping::process_mapping;
 use crate::mods::utils::functions::global::get_env_vars;
 use crate::mods::utils::types::line_descriptors::LineDescriptions;
 use crate::mods::utils::types::variant::{TVariant, Variant};
@@ -120,7 +122,18 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
 }
 
 fn process_function_body(tokens: &Vec<&Token>) -> Result<(), &'static str> {
-    println!("{:?}\n\n\n\n", tokens);
+    let stripped_tokens = tokens.strip_spaces();
+
+    if stripped_tokens.len() == 0 {
+        return Err("Unprocessible entity");
+    }
+
+    match stripped_tokens[0] {
+        Token::OpenBraces => {
+            // println!("{:?}", stripped_tokens);
+        }
+        _ => {}
+    }
 
     Ok(())
 }
@@ -422,46 +435,7 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                                 }
                             }
 
-                            match split.first().unwrap() {
-                                Token::Function => {
-                                    let function_header_arg =
-                                        parse_function_header(split.to_vec(), line);
-
-                                    if function_header.arguments.is_none() {
-                                        function_header.arguments = Some(Vec::new());
-                                    }
-                                    function_header.arguments.as_mut().unwrap().push(
-                                        ArgType::Function(FunctionHeader {
-                                            r#type: FunctionType::Variable,
-                                            ..function_header_arg
-                                        }),
-                                    );
-                                }
-                                _ => {
-                                    let arg = Variant::process_args(split);
-                                    if arg.is_err() {
-                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                            &format!(
-                                                "{} {}",
-                                                arg.as_ref().err().unwrap(),
-                                                split.to_vec().to_string()
-                                            ),
-                                        ))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            line,
-                                        )
-                                    }
-                                    if function_header.arguments.is_none() {
-                                        function_header.arguments = Some(Vec::new());
-                                    }
-                                    function_header
-                                        .arguments
-                                        .as_mut()
-                                        .unwrap()
-                                        .push(ArgType::Variant(arg.unwrap()));
-                                }
-                            }
+                            parse_args_types(split, &mut function_header, line, ArgRet::Arg);
                         }
                     }
 
@@ -492,6 +466,7 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                         ))
                         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                     }
+
                     let raw_args = &header_tokens[index + 1..iteration + index];
                     if !raw_args.is_empty() {
                         let splitted_args = raw_args.to_vec().split_coma();
@@ -518,19 +493,7 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                                 }
                             }
 
-                            let arg = Variant::process_args(split);
-                            if arg.is_err() {
-                                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                                    "{} {}",
-                                    arg.as_ref().err().unwrap(),
-                                    split.to_vec().to_string()
-                                )))
-                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
-                            }
-                            if function_header.returns.is_none() {
-                                function_header.returns = Some(Vec::new());
-                            }
-                            function_header.returns.as_mut().unwrap().push(arg.unwrap());
+                            parse_args_types(split, &mut function_header, line, ArgRet::Ret);
                         }
                     }
 
@@ -753,5 +716,170 @@ fn process_modifier_call(
             "Unprocessible entity for function declaration",
         ))
         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+    }
+}
+
+fn parse_args_types(
+    split: &Vec<Token>,
+    function_header: &mut FunctionHeader,
+    line: i32,
+    arg_ret: ArgRet,
+) {
+    match arg_ret {
+        ArgRet::Arg => match split.first().unwrap() {
+            Token::Function => {
+                let function_header_arg = parse_function_header(split.to_vec(), line);
+
+                if function_header.arguments.is_none() {
+                    function_header.arguments = Some(Vec::new());
+                }
+                function_header
+                    .arguments
+                    .as_mut()
+                    .unwrap()
+                    .push(ArgType::Function(FunctionHeader {
+                        r#type: FunctionType::Variable,
+                        ..function_header_arg
+                    }));
+            }
+            Token::Mapping => {
+                let mut new_split = split.clone();
+                new_split.push(Token::SemiColon);
+                let mut mapping = Mapping::new();
+                let mut mapping_header = MappingHeader::new();
+                let find_memory_index = new_split.iter().position(|pred| {
+                    *pred == Token::Storage || *pred == Token::Memory || *pred == Token::Calldata
+                });
+                let mut mem_location: Option<Token> = None;
+                if let Some(memory_index) = find_memory_index {
+                    mem_location = Some(new_split[memory_index].clone());
+                    new_split.remove(memory_index);
+                }
+
+                process_mapping(&new_split, &mut mapping, &mut mapping_header).unwrap_or_else(
+                    |(err, _)| {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "{} {}",
+                            err,
+                            split.to_vec().to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                    },
+                );
+
+                if function_header.arguments.is_none() {
+                    function_header.arguments = Some(Vec::new());
+                }
+                function_header
+                    .arguments
+                    .as_mut()
+                    .unwrap()
+                    .push(ArgType::Mapping {
+                        mem_location,
+                        mapping: MappingAST {
+                            header: mapping_header,
+                            map: mapping,
+                        },
+                    });
+            }
+
+            _ => {
+                let arg = Variant::process_args(split);
+                if arg.is_err() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "{} {}",
+                        arg.as_ref().err().unwrap(),
+                        split.to_vec().to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                }
+                if function_header.arguments.is_none() {
+                    function_header.arguments = Some(Vec::new());
+                }
+                function_header
+                    .arguments
+                    .as_mut()
+                    .unwrap()
+                    .push(ArgType::Variant(arg.unwrap()));
+            }
+        },
+
+        ArgRet::Ret => match split.first().unwrap() {
+            Token::Function => {
+                let function_header_arg = parse_function_header(split.to_vec(), line);
+
+                if function_header.returns.is_none() {
+                    function_header.returns = Some(Vec::new());
+                }
+                function_header
+                    .returns
+                    .as_mut()
+                    .unwrap()
+                    .push(ArgType::Function(FunctionHeader {
+                        r#type: FunctionType::Variable,
+                        ..function_header_arg
+                    }));
+            }
+            Token::Mapping => {
+                let mut new_split = split.clone();
+                new_split.push(Token::SemiColon);
+                let mut mapping = Mapping::new();
+                let mut mapping_header = MappingHeader::new();
+                let find_memory_index = new_split.iter().position(|pred| {
+                    *pred == Token::Storage || *pred == Token::Memory || *pred == Token::Calldata
+                });
+                let mut mem_location: Option<Token> = None;
+                if let Some(memory_index) = find_memory_index {
+                    mem_location = Some(new_split[memory_index].clone());
+                    new_split.remove(memory_index);
+                }
+
+                process_mapping(&new_split, &mut mapping, &mut mapping_header).unwrap_or_else(
+                    |(err, _)| {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                            "{} {}",
+                            err,
+                            split.to_vec().to_string()
+                        )))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                    },
+                );
+
+                if function_header.returns.is_none() {
+                    function_header.returns = Some(Vec::new());
+                }
+                function_header
+                    .returns
+                    .as_mut()
+                    .unwrap()
+                    .push(ArgType::Mapping {
+                        mem_location,
+                        mapping: MappingAST {
+                            header: mapping_header,
+                            map: mapping,
+                        },
+                    });
+            }
+
+            _ => {
+                let arg = Variant::process_args(split);
+                if arg.is_err() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                        "{} {}",
+                        arg.as_ref().err().unwrap(),
+                        split.to_vec().to_string()
+                    )))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
+                }
+                if function_header.returns.is_none() {
+                    function_header.returns = Some(Vec::new());
+                }
+                function_header
+                    .returns
+                    .as_mut()
+                    .unwrap()
+                    .push(ArgType::Variant(arg.unwrap()));
+            }
+        },
     }
 }

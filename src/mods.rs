@@ -16,6 +16,7 @@ pub mod utils {
         pub mod global;
         pub mod process_file_contents;
         pub mod sub_main;
+        pub mod value;
         pub mod variant;
     }
 }
