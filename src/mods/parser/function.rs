@@ -37,7 +37,6 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
             }
 
             let _header = parse_function_header(function_header, line);
-            println!("{:#?}", _header);
             let mut skipped_count = 0;
             let mut combined: Vec<&Token> = Vec::new();
             let mut opened_context = 0;
@@ -135,19 +134,6 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
         ))
         .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
     }
-    match header_tokens[0] {
-        Token::Function
-        | Token::Modifier
-        | Token::Constructor
-        | Token::Receive
-        | Token::Fallback => {}
-        _ => {
-            CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                "Unprocessible entity for function declaration",
-            ))
-            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
-        }
-    }
 
     let mut state = FunctionHeaderState::None;
 
@@ -180,7 +166,6 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                         }
                         _ => {}
                     }
-                    if let Token::Modifier = token {}
                     state = FunctionHeaderState::Keyword;
                 } else {
                     CompilerError::SyntaxError(SyntaxError::SyntaxError(
