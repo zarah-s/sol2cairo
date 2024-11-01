@@ -28,6 +28,10 @@ pub struct ModifierCall {
 pub enum FunctionType {
     Variable,
     Interface,
+    Modifier,
+    Constructor,
+    Receive,
+    Fallback,
 }
 
 #[derive(Debug)]
@@ -37,6 +41,7 @@ pub struct FunctionHeader {
     pub mutability: Option<Token>,
     pub visibility: Option<Token>,
     pub returns: Option<Vec<Variant>>,
+    /// Inheritance for virtual and override
     pub inheritance: Option<Token>,
     pub r#type: FunctionType,
     pub arguments: Option<Vec<ArgType>>,
