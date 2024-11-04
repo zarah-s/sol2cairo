@@ -1,5 +1,6 @@
 use crate::mods::ast::function::{
-    ArgRet, ArgType, FunctionHeader, FunctionHeaderState, FunctionType, ModifierCall,
+    ArgRet, ArgType, ConditionType, Conditionals, FunctionArm, FunctionHeader, FunctionHeaderState,
+    FunctionType, If, ModifierCall,
 };
 use crate::mods::ast::mapping::{Mapping, MappingAST, MappingHeader};
 use crate::mods::constants::constants::FILE_PATH;
@@ -8,134 +9,234 @@ use crate::mods::lexer::lexer::TVecExtension;
 use crate::mods::lexer::tokens::Token;
 use crate::mods::parser::mapping::process_mapping;
 use crate::mods::utils::functions::global::get_env_vars;
+use crate::mods::utils::functions::value::parse_value;
 use crate::mods::utils::types::line_descriptors::LineDescriptions;
 use crate::mods::utils::types::variant::{TVariant, Variant};
 
 pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
     for function_lexem in lexems {
         let mut header_iteration = 0;
-        {
-            let mut function_header: Vec<Token> = Vec::new();
-            let mut line = 0;
-            let mut should_break = false;
-            for line_desc in &function_lexem {
-                if line == 0 {
-                    line = line_desc.line;
-                }
-                if should_break {
-                    break;
-                }
-                for token in &line_desc.data {
-                    match token {
-                        Token::OpenBraces => {
-                            should_break = true;
-                            break;
-                        }
-                        _ => {}
-                    }
-                    function_header.push(token.to_owned());
-                    header_iteration += 1;
-                }
+        let mut function_header: Vec<Token> = Vec::new();
+        let mut line = 0;
+        let mut should_break = false;
+        for line_desc in &function_lexem {
+            if line == 0 {
+                line = line_desc.line;
             }
-
-            let _header = parse_function_header(function_header, line);
-            let mut skipped_count = 0;
-            let mut combined: Vec<&Token> = Vec::new();
-            let mut opened_context = 0;
-            let mut opened_scope = 1;
-            for body in &function_lexem {
-                for token in &body.data {
-                    if skipped_count < header_iteration + 1 {
-                        skipped_count += 1;
-                        continue;
+            if should_break {
+                break;
+            }
+            for token in &line_desc.data {
+                match token {
+                    Token::OpenBraces => {
+                        should_break = true;
+                        break;
                     }
-                    combined.push(token);
-
-                    match token {
-                        Token::OpenBraces => {
-                            opened_scope += 1;
-                        }
-
-                        Token::CloseBraces => {
-                            opened_scope -= 1;
-
-                            if opened_scope == 1 {
-                                process_function_body(&combined).unwrap_or_else(|err| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            body.line,
-                                        );
-                                });
-                                combined.clear();
-                            }
-                        }
-                        Token::OpenParenthesis => {
-                            opened_context += 1;
-                        }
-
-                        Token::CloseParenthesis => {
-                            opened_context -= 1;
-                        }
-                        Token::SemiColon => {
-                            if opened_context == 0 && opened_scope == 1 {
-                                process_function_body(&combined).unwrap_or_else(|err| {
-                                    CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
-                                        .throw_with_file_info(
-                                            &get_env_vars(FILE_PATH).unwrap(),
-                                            body.line,
-                                        );
-                                });
-                                combined.clear();
-                            }
-                        }
-
-                        _ => {}
-                    }
+                    _ => {}
                 }
-            }
-
-            if opened_context != 0 || opened_scope != 0 {
-                CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                    "Unexpected context in function declaration",
-                ))
-                .throw_with_file_info(
-                    &get_env_vars(FILE_PATH).unwrap(),
-                    function_lexem.first().unwrap().line,
-                );
-            }
-
-            if !combined.is_empty() && !&combined[..combined.len() - 1].is_empty() {
-                process_function_body(&combined[..combined.len() - 1].to_vec()).unwrap_or_else(
-                    |err| {
-                        CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
-                            .throw_with_file_info(
-                                &get_env_vars(FILE_PATH).unwrap(),
-                                function_lexem.last().unwrap().line,
-                            );
-                    },
-                );
-                combined.clear();
+                function_header.push(token.to_owned());
+                header_iteration += 1;
             }
         }
+
+        let _header = parse_function_header(function_header, line);
+        let mut skipped_count = 0;
+        let mut combined: Vec<Token> = Vec::new();
+        let mut opened_context = 0;
+        let mut opened_scope = 1;
+
+        let mut function_arms = Vec::new();
+        for body in &function_lexem {
+            for token in &body.data {
+                if skipped_count < header_iteration + 1 {
+                    skipped_count += 1;
+                    continue;
+                }
+                combined.push(token.clone());
+
+                match token {
+                    Token::OpenBraces => {
+                        opened_scope += 1;
+                    }
+
+                    Token::CloseBraces => {
+                        opened_scope -= 1;
+
+                        if opened_scope == 1 {
+                            let arm = process_function_body(&combined).unwrap_or_else(|err| {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
+                                    .throw_with_file_info(
+                                        &get_env_vars(FILE_PATH).unwrap(),
+                                        body.line,
+                                    );
+                                unreachable!()
+                            });
+
+                            function_arms.push(arm);
+
+                            // println!("{:#?}", res);
+                            combined.clear();
+                        }
+                    }
+                    Token::OpenParenthesis => {
+                        opened_context += 1;
+                    }
+
+                    Token::CloseParenthesis => {
+                        opened_context -= 1;
+                    }
+                    Token::SemiColon => {
+                        if opened_context == 0 && opened_scope == 1 {
+                            let arm = process_function_body(&combined).unwrap_or_else(|err| {
+                                CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
+                                    .throw_with_file_info(
+                                        &get_env_vars(FILE_PATH).unwrap(),
+                                        body.line,
+                                    );
+                                unreachable!()
+                            });
+
+                            function_arms.push(arm);
+                            combined.clear();
+                        }
+                    }
+
+                    _ => {}
+                }
+            }
+        }
+
+        if opened_context != 0 || opened_scope != 0 {
+            CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                "Unexpected context in function declaration",
+            ))
+            .throw_with_file_info(
+                &get_env_vars(FILE_PATH).unwrap(),
+                function_lexem.first().unwrap().line,
+            );
+        }
+
+        if !combined.is_empty() && !&combined[..combined.len() - 1].is_empty() {
+            let arm = process_function_body(&combined[..combined.len() - 1].to_vec())
+                .unwrap_or_else(|err| {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(err)).throw_with_file_info(
+                        &get_env_vars(FILE_PATH).unwrap(),
+                        function_lexem.last().unwrap().line,
+                    );
+                    unreachable!()
+                });
+            function_arms.push(arm);
+            combined.clear();
+        }
+        println!("{:#?}", function_arms);
     }
 }
 
-fn process_function_body(tokens: &Vec<&Token>) -> Result<(), &'static str> {
+fn process_function_body(tokens: &Vec<Token>) -> Result<FunctionArm, &'static str> {
     let stripped_tokens = tokens.strip_spaces();
 
     if stripped_tokens.len() == 0 {
         return Err("Unprocessible entity");
     }
 
-    match stripped_tokens[0] {
+    let mut conditional: Option<Conditionals> = None;
+
+    match &stripped_tokens[0] {
         Token::OpenBraces => {
-            // println!("{:?}", stripped_tokens);
+            let raw_arms = &stripped_tokens[1..stripped_tokens.len() - 1];
+            let arms = prepare_function_body(raw_arms.to_vec(), 0);
+
+            return Ok(FunctionArm::Scope(Box::new(arms)));
+        }
+        Token::Else => {
+            if stripped_tokens.len() < 2 {
+                return Err("Unprocessible entity for conditional statement");
+            }
+
+            match stripped_tokens[1] {
+                Token::If => {
+                    let res = process_function_body(&stripped_tokens[1..].to_vec());
+                    if res.is_err() {
+                        return Err(res.err().unwrap());
+                    }
+
+                    match res.unwrap() {
+                        FunctionArm::If(_val) => {
+                            return Ok(FunctionArm::If(If {
+                                r#type: ConditionType::ElIf,
+                                arm: _val.arm,
+                                condition: _val.condition,
+                            }))
+                        }
+                        _ => {
+                            return Err("Unprocessible entity for conditional statement");
+                        }
+                    }
+                }
+                _ => {
+                    let raw_arms = &stripped_tokens[2..stripped_tokens.len() - 1];
+
+                    if raw_arms.len() > 0 {
+                        let arms = prepare_function_body(raw_arms.to_vec(), 0);
+
+                        return Ok(FunctionArm::El(Some(arms)));
+                    }
+
+                    return Ok(FunctionArm::El(None));
+                }
+            }
+        }
+        Token::If => {
+            if conditional.is_some() {
+                return Err("Unprocessible entity for conditional statement");
+            }
+
+            conditional = Some(Conditionals::new());
+
+            if stripped_tokens.len() > 1 && stripped_tokens[1] != Token::OpenParenthesis {
+                return Err("Unprocessible entity for conditional statement");
+            }
+
+            let mut opened_context = 0;
+            let mut iteration = 0;
+
+            for tkn in &stripped_tokens {
+                match tkn {
+                    Token::OpenParenthesis => opened_context += 1,
+                    Token::CloseParenthesis => {
+                        opened_context -= 1;
+                        if opened_context == 0 {
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+
+                iteration += 1;
+            }
+
+            if opened_context != 0 {
+                return Err("Unprocessible entity for conditional statement");
+            }
+
+            let raw_condition = &stripped_tokens[2..iteration];
+            let condition = parse_value(raw_condition.to_vec(), 0);
+            // conditional.as_mut().unwrap().condition = Some(condition);
+
+            let raw_arms = &stripped_tokens[iteration + 2..stripped_tokens.len() - 1];
+            let arms = prepare_function_body(raw_arms.to_vec(), 0);
+            return Ok(FunctionArm::If(If {
+                r#type: ConditionType::If,
+                condition: Some(condition),
+                arm: Some(arms),
+            }));
+            // conditional.as_mut().unwrap().arm = Some(returns);
+            // return Ok(FunctionArm::Conditionals(conditional.unwrap()));
         }
         _ => {}
     }
 
-    Ok(())
+    return Ok(FunctionArm::None);
 }
 
 pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader {
@@ -882,4 +983,73 @@ fn parse_args_types(
             }
         },
     }
+}
+
+fn prepare_function_body(raw_tokens: Vec<Token>, line: i32) -> Vec<FunctionArm> {
+    let mut combined: Vec<Token> = Vec::new();
+    let mut opened_context = 0;
+    let mut opened_scope = 0;
+    let mut result = Vec::new();
+
+    for token in &raw_tokens {
+        combined.push(token.clone());
+
+        match token {
+            Token::OpenBraces => {
+                opened_scope += 1;
+            }
+
+            Token::CloseBraces => {
+                opened_scope -= 1;
+
+                if opened_scope == 0 {
+                    result.push(process_function_body(&combined).unwrap_or_else(|err| {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        unreachable!()
+                    }));
+                    combined.clear();
+                }
+            }
+            Token::OpenParenthesis => {
+                opened_context += 1;
+            }
+
+            Token::CloseParenthesis => {
+                opened_context -= 1;
+            }
+            Token::SemiColon => {
+                if opened_context == 0 && opened_scope == 0 {
+                    result.push(process_function_body(&combined).unwrap_or_else(|err| {
+                        CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                        unreachable!()
+                    }));
+                    combined.clear();
+                }
+            }
+
+            _ => {}
+        }
+    }
+
+    if opened_context != 0 || opened_scope != 0 {
+        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+            "Unexpected context in function declaration",
+        ))
+        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+    }
+
+    if !combined.is_empty() {
+        result.push(
+            process_function_body(&combined[..combined.len()].to_vec()).unwrap_or_else(|err| {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(err))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                unreachable!()
+            }),
+        );
+        combined.clear();
+    }
+
+    result
 }

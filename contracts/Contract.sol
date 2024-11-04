@@ -13,11 +13,22 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
             bool i;
         }
 
-}
+chiii}
     uint oi = (1 days).count(payable(address(jane)));
 
     constructor() owner()  oi() {
-
+if(true == true && false!=true){
+if(!true){
+asdfasd;asdfasd;asdf
+}
+}else if(nottrue){
+    asdfa;
+if(oi){
+    asdfasd
+    }
+}else{
+    
+}
     }
 
         // Function that returns a function pointer

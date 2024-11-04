@@ -114,16 +114,23 @@ pub struct TuppleAssignment {
 }
 
 #[derive(Debug)]
-pub struct ElIf {
-    pub condition: Vec<Token>,
-    pub arm: Vec<FunctionArm>,
+pub enum ConditionType {
+    If,
+    ElIf,
+}
+
+#[derive(Debug)]
+pub struct If {
+    pub r#type: ConditionType,
+    pub condition: Option<Value>,
+    pub arm: Option<Vec<FunctionArm>>,
 }
 
 #[derive(Debug)]
 pub struct Conditionals {
-    pub condition: Value,
-    pub arm: Vec<FunctionArm>,
-    pub elif: Option<Vec<ElIf>>,
+    pub condition: Option<Value>,
+    pub arm: Option<Vec<FunctionArm>>,
+    pub elif: Option<Vec<If>>,
     pub el: Option<Vec<FunctionArm>>,
 }
 
@@ -161,6 +168,8 @@ pub enum FunctionArm {
     MappingAssign(MappingAssign),
     TuppleAssignment(TuppleAssignment),
     FunctionCall(Value),
+    If(If),
+    El(Option<Vec<FunctionArm>>),
     FunctionExecution,
     Break,
     Continue,
@@ -171,7 +180,8 @@ pub enum FunctionArm {
     Revert(Option<Value>),
     Assert(Value),
     Loop(Loop),
-    Scope(Box<FunctionArm>),
+    Scope(Box<Vec<FunctionArm>>),
+    None,
 }
 
 impl FunctionHeader {
@@ -191,6 +201,17 @@ impl FunctionHeader {
             size: None,
             var_name: None,
             var_visibility: None,
+        }
+    }
+}
+
+impl Conditionals {
+    pub fn new() -> Self {
+        Self {
+            condition: None,
+            arm: None,
+            elif: None,
+            el: None,
         }
     }
 }

@@ -396,8 +396,8 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
             let mut nest: Option<Box<Value>> = None;
 
             if raw_value.strip_spaces().len() > 1 {
-                match raw_value.strip_spaces()[1] {
-                    Token::QMark | Token::Equals => (),
+                match &raw_value.strip_spaces()[1] {
+                    &Token::QMark | &Token::Equals | &Token::And | &Token::Or | &Token::Bang => (),
                     _ => {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(
                             "Unprocessible entity for boolean type",
