@@ -81,12 +81,6 @@ pub enum ArgType {
 }
 
 #[derive(Debug)]
-pub struct EventEmitter {
-    pub identifier: String,
-    pub values: Vec<Value>,
-}
-
-#[derive(Debug)]
 pub enum VariableAssignOperation {
     Push,
     Pop,
@@ -94,7 +88,7 @@ pub enum VariableAssignOperation {
 }
 
 #[derive(Debug)]
-pub struct MappingAssign {
+pub struct VariantAssign {
     pub identifier: String,
     pub value: Option<Value>,
     pub variants: Vec<Value>,
@@ -103,7 +97,7 @@ pub struct MappingAssign {
 
 #[derive(Debug)]
 pub struct Require {
-    pub condition: Value,
+    pub condition: Option<Value>,
     pub message: Option<Value>,
 }
 
@@ -135,17 +129,6 @@ pub struct Conditionals {
 }
 
 #[derive(Debug)]
-pub struct Return {
-    pub value: Value,
-}
-
-#[derive(Debug)]
-pub struct Delete {
-    pub identifier: String,
-    pub variants: Option<Vec<Value>>,
-}
-
-#[derive(Debug)]
 pub enum LoopType {
     For,
     While,
@@ -162,25 +145,25 @@ pub struct Loop {
 
 #[derive(Debug)]
 pub enum FunctionArm {
-    VariableIdentifier(VariableAST),
     VariableAssign(VariableAST),
-    EventEmitter(EventEmitter),
-    MappingAssign(MappingAssign),
+    VariantAssign(VariantAssign),
     TuppleAssignment(TuppleAssignment),
     FunctionCall(Value),
-    If(If),
-    El(Option<Vec<FunctionArm>>),
     FunctionExecution,
     Break,
     Continue,
+    Loop(Loop),
+    VariableIdentifier(VariableAST),
+    EventEmitter(Value),
+    If(If),
+    El(Option<Vec<FunctionArm>>),
     Require(Require),
-    Conditionals(Conditionals),
-    Return(Return),
-    Delete(Delete),
+    // Conditionals(Conditionals),
+    Return(Value),
+    Delete(Value),
     Revert(Option<Value>),
     Assert(Value),
-    Loop(Loop),
-    Scope(Box<Vec<FunctionArm>>),
+    Scope(Vec<FunctionArm>),
     None,
 }
 
@@ -212,6 +195,15 @@ impl Conditionals {
             arm: None,
             elif: None,
             el: None,
+        }
+    }
+}
+
+impl Require {
+    pub fn new() -> Self {
+        Self {
+            condition: None,
+            message: None,
         }
     }
 }

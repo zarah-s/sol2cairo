@@ -2,29 +2,37 @@
 pragma solidity ^0.8.24;
 
 library Name {
+    jane = brian[12][12][12];
+    // asd[12][12] = just;
+    ade.asd = a.b[].v.d;
         uint oi =1>=1&& !true?&1:1+=1;
         mapping (sd => mapping (address => uint) )  name;
         mapping (address => uint) name;
  address payable[] ddd;
 function ddd(uint[] storage osad,address payable owner) external Only(msg.sender) another  gasless returns(address memory payable[10] user,Layout.Pool memory pool)  {
         bytes public buffer = new bytes(2);
+
+        require(1==1,C_error());
         uint j;
         {
             bool i;
         }
+       {
+         vic;
+        }
 
-chiii}
+chiii;}
     uint oi = (1 days).count(payable(address(jane)));
 
     constructor() owner()  oi() {
 if(true == true && false!=true){
 if(!true){
-asdfasd;asdfasd;asdf
+asdfasd;asdfasd;asdf;
 }
 }else if(nottrue){
     asdfa;
 if(oi){
-    asdfasd
+    asdfasd;
     }
 }else{
     
@@ -81,9 +89,26 @@ if(oi){
         uint256[] a,
         uint256 b
     ) external view returns (uint256) {
-        return func(a, b); // Calls the passed function pointer
-    oi}
 
+revert Err(string(abi.encodePacked([1,2,3])));
+        delete brian[msg.sender];
+        return func(a, b); // Calls the passed function pointer
+    oi;}
+
+
+function testCustomError(uint256 _withdrawAmount) public view {
+        uint256 bal = address(this).balance;
+        if (bal < _withdrawAmount) {
+            revert InsufficientBalance({
+                balance: bal,
+                withdrawAmount: _withdrawAmount
+            });
+
+            emit OII({asd:sdf});
+
+            assert(1==1&& 2>>3<1);
+        }
+    }
 
   struct FunctionHolder {
         function (uint256, uint256) external returns (uint256) funcPointerStr;

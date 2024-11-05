@@ -249,7 +249,7 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
             }
         }
 
-        Token::Plus | Token::Minus | Token::Multiply | Token::Divide => {
+        Token::Plus | Token::Minus | Token::Multiply | Token::Divide | Token::Modulu => {
             let operation = &raw_value.strip_spaces()[0];
             return process_math_operation(&raw_value, line, operation);
         }
@@ -421,7 +421,7 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
 
         Token::Gt | Token::Lt => {
             let stripped = raw_value.strip_spaces();
-            if stripped.len() < 3 {
+            if stripped.len() < 2 {
                 CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
@@ -441,6 +441,22 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
 
                 return variable_value;
             } else {
+                let check_next = &stripped[1];
+                if check_next == &stripped[0] {
+                    let variable_value = Value::ExpressionValue(ExpressionValue {
+                        value: ExpressionVariable {
+                            r#type: if stripped[0] == Token::Gt {
+                                ExpressionTypes::Shr
+                            } else {
+                                ExpressionTypes::Shl
+                            },
+                            operand: Box::new(parse_value(stripped[2..].to_vec(), line)),
+                        },
+                        then: None,
+                    });
+
+                    return variable_value;
+                }
                 let variable_value = Value::ExpressionValue(ExpressionValue {
                     value: ExpressionVariable {
                         r#type: if stripped[0] == Token::Gt {
@@ -1483,6 +1499,7 @@ fn process_math_operation(raw_value: &Vec<Token>, line: i32, operation: &Token) 
                     Token::Minus => ExpressionTypes::Sub,
                     Token::Multiply => ExpressionTypes::Mul,
                     Token::Divide => ExpressionTypes::Div,
+                    Token::Modulu => ExpressionTypes::Mod,
                     _ => {
                         CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
                             "Unprocessible entity for {}",

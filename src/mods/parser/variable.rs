@@ -86,7 +86,7 @@ pub fn parse_variables(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) -> Vec<Va
     variables
 }
 
-fn process_var_construct(
+pub fn process_var_construct(
     combined: &Vec<Token>,
     line: i32,
 ) -> Result<VariableAST, (String, ErrType)> {
