@@ -136,7 +136,7 @@ pub enum LoopType {
 
 #[derive(Debug)]
 pub struct Loop {
-    pub initiator: VariableAST,
+    pub initiator: Option<VariableAST>,
     pub condition: Value,
     pub iterator: Option<Value>,
     pub arms: Vec<FunctionArm>,
@@ -147,12 +147,12 @@ pub struct Loop {
 pub enum FunctionArm {
     VariableAssign(VariableAST),
     VariantAssign(VariantAssign),
-    TuppleAssignment(TuppleAssignment),
     FunctionCall(Value),
     FunctionExecution,
     Break,
     Continue,
     Loop(Loop),
+    TuppleAssignment(TuppleAssignment),
     Context(Vec<FunctionArm>),
     MemoryAssign(Value),
     VariableIdentifier(VariableAST),

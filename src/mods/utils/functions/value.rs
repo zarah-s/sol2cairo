@@ -20,7 +20,7 @@ use crate::mods::lexer::{
 
 pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
     if raw_value.strip_spaces().is_empty() {
-        CompilerError::SyntaxError(SyntaxError::SyntaxError(""))
+        CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line)
     }
 

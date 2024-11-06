@@ -1,6 +1,6 @@
 use crate::mods::ast::function::{
     ArgRet, ArgType, ConditionType, FunctionArm, FunctionHeader, FunctionHeaderState, FunctionType,
-    If, ModifierCall, Require, TuppleAssignment,
+    If, Loop, LoopType, ModifierCall, Require, TuppleAssignment,
 };
 use crate::mods::ast::mapping::{Mapping, MappingAST, MappingHeader};
 use crate::mods::ast::variable::VariableAST;
@@ -379,6 +379,145 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
 
                 return FunctionArm::TuppleAssignment(tupple_construct);
             }
+        }
+
+        Token::For => {
+            if stripped_tokens.len() > 1 && stripped_tokens[1] != Token::OpenParenthesis {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            let mut opened_context = 0;
+            let mut iteration = 0;
+
+            for tkn in &stripped_tokens {
+                match tkn {
+                    Token::OpenParenthesis => opened_context += 1,
+                    Token::CloseParenthesis => {
+                        opened_context -= 1;
+                        if opened_context == 0 {
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+
+                iteration += 1;
+            }
+
+            if opened_context != 0 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+            let raw_args = &stripped_tokens[2..iteration];
+
+            let splitted_args = raw_args
+                .split(|pred| *pred == Token::SemiColon)
+                .collect::<Vec<_>>();
+
+            if splitted_args.len() != 3 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            let initiator = Some(
+                process_var_construct(
+                    &vec![splitted_args[0].to_vec(), vec![Token::SemiColon]].concat(),
+                    line,
+                )
+                .unwrap_or_else(|(err, _)| {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(&err))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    unreachable!();
+                }),
+            );
+
+            let condition = parse_value(splitted_args[1].to_vec(), line);
+            let iterator = Some(parse_value(splitted_args[2].to_vec(), line));
+
+            let raw_arms = &stripped_tokens[iteration + 2..stripped_tokens.len() - 1];
+            let arms = prepare_function_body(raw_arms.to_vec(), line);
+            let loop_construct = Loop {
+                initiator,
+                condition,
+                iterator,
+                r#type: LoopType::For,
+                arms,
+            };
+
+            return FunctionArm::Loop(loop_construct);
+        }
+
+        Token::While => {
+            if stripped_tokens.len() > 1 && stripped_tokens[1] != Token::OpenParenthesis {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            let mut opened_context = 0;
+            let mut iteration = 0;
+
+            for tkn in &stripped_tokens {
+                match tkn {
+                    Token::OpenParenthesis => opened_context += 1,
+                    Token::CloseParenthesis => {
+                        opened_context -= 1;
+                        if opened_context == 0 {
+                            break;
+                        }
+                    }
+                    _ => {}
+                }
+
+                iteration += 1;
+            }
+
+            if opened_context != 0 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+            let raw_args = &stripped_tokens[2..iteration];
+
+            let splitted_args = raw_args
+                .split(|pred| *pred == Token::SemiColon)
+                .collect::<Vec<_>>();
+
+            if splitted_args.len() != 1 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            let condition = parse_value(splitted_args[0].to_vec(), line);
+
+            let raw_arms = &stripped_tokens[iteration + 2..stripped_tokens.len() - 1];
+            let arms = prepare_function_body(raw_arms.to_vec(), line);
+            let loop_construct = Loop {
+                initiator: None,
+                condition,
+                iterator: None,
+                r#type: LoopType::While,
+                arms,
+            };
+
+            return FunctionArm::Loop(loop_construct);
+        }
+
+        Token::Continue => {
+            if stripped_tokens.last().unwrap() != &Token::SemiColon {
+                CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            return FunctionArm::Continue;
+        }
+
+        Token::Break => {
+            if stripped_tokens.last().unwrap() != &Token::SemiColon {
+                CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            return FunctionArm::Break;
         }
 
         Token::OpenSquareBracket => {

@@ -70,10 +70,10 @@ if(oi){
 
         }
         // Loop through the array and call each function
-        for (uint256 i = 0; i < funcArray.length; i++) {
+        // for (uint256 i = 0; i < funcArray.length; i++) {
         
-            results[i] = funcArray[i](a, b); // Execute each function pointer
-        }
+        //     results[i] = funcArray[i](a, b); // Execute each function pointer
+        // }
     }
 
     modifier name {
@@ -95,6 +95,8 @@ revert Err(string(abi.encodePacked([1,2,3])));
         return func(a, b); // Calls the passed function pointer
     oi;}
 
+event MyEvent(address indexed user, uint256 amount);
+event AnonymousEvent(address indexed user, uint256 amount) anonymous;
 
 function testCustomError(uint256 _withdrawAmount) public view {
         uint256 bal = address(this).balance;
@@ -110,6 +112,27 @@ function testCustomError(uint256 _withdrawAmount) public view {
             emit OII({asd:sdf});
 
             assert(1==1&& 2>>3<1);
+        }
+    }
+
+
+     function loop() public {
+        // for loop
+        for (uint256 i; i < 10; i++) {
+            if (i == 3) {
+                // Skip to next iteration with continue
+                continue;
+            }
+            if (i == 5) {
+                // Exit loop with break
+                break;
+            }
+        }
+
+        // while loop
+        uint256 j;
+        while (j < 10) {
+            j++;
         }
     }
 
