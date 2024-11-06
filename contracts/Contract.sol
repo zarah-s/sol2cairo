@@ -103,6 +103,9 @@ function testCustomError(uint256 _withdrawAmount) public view {
                 balance: bal,
                 withdrawAmount: _withdrawAmount
             });
+(string("hello's"),uint(0),["as","sdfsd"]);
+            (string("0"));
+            (uint j,string memory oi,) = (uint(0),"sdf");
 
             emit OII({asd:sdf});
 

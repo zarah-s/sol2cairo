@@ -103,8 +103,8 @@ pub struct Require {
 
 #[derive(Debug)]
 pub struct TuppleAssignment {
-    pub variables: Vec<VariableAST>,
-    pub value: Vec<Value>,
+    pub identifiers: Vec<VariableAST>,
+    pub value: Box<FunctionArm>,
 }
 
 #[derive(Debug)]
@@ -153,6 +153,8 @@ pub enum FunctionArm {
     Break,
     Continue,
     Loop(Loop),
+    Context(Vec<FunctionArm>),
+    MemoryAssign(Value),
     VariableIdentifier(VariableAST),
     EventEmitter(Value),
     If(If),
