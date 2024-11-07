@@ -130,6 +130,10 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
             );
             combined.clear();
         }
+
+        if conditionals.is_some() {
+            function_arms.push(FunctionArm::Conditionals(conditionals.take().unwrap()));
+        }
         println!("{:#?}", function_arms);
     }
 }
@@ -1528,6 +1532,10 @@ fn prepare_function_body(raw_tokens: Vec<Token>, line: i32) -> Vec<FunctionArm> 
         construct_conditional_statement(arm, line, &mut conditionals, &mut result);
 
         combined.clear();
+    }
+
+    if conditionals.is_some() {
+        result.push(FunctionArm::Conditionals(conditionals.take().unwrap()));
     }
 
     result
