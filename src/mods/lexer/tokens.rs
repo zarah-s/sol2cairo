@@ -5,6 +5,8 @@ pub enum Token {
     Solidity,
     Library,
     Using,
+    Continue,
+    Break,
     Block,
     Tx,
     This,

@@ -1,4 +1,16 @@
-use crate::mods::{lexer::tokens::Token, utils::types::variant::Variant};
+use crate::mods::{
+    lexer::tokens::Token,
+    utils::types::{value::Value, variant::Variant},
+};
+
+use super::{mapping::MappingAST, variable::VariableAST};
+
+/// Distinguish between argument or return args for reusable function
+#[derive(Debug)]
+pub enum ArgRet {
+    Arg,
+    Ret,
+}
 
 #[derive(Debug)]
 pub enum FunctionHeaderState {
@@ -40,7 +52,7 @@ pub struct FunctionHeader {
     pub gasless: bool,
     pub mutability: Option<Token>,
     pub visibility: Option<Token>,
-    pub returns: Option<Vec<Variant>>,
+    pub returns: Option<Vec<ArgType>>,
     /// Inheritance for virtual and override
     pub inheritance: Option<Token>,
     pub r#type: FunctionType,
@@ -56,8 +68,112 @@ pub struct FunctionHeader {
 
 #[derive(Debug)]
 pub enum ArgType {
+    /// accepts function pointer as argument
     Function(FunctionHeader),
+    /// normal function args
     Variant(Variant),
+
+    /// accepts mapping pointer as argument
+    Mapping {
+        mem_location: Option<Token>,
+        mapping: MappingAST,
+    },
+}
+
+#[derive(Debug)]
+pub enum VariableAssignOperation {
+    Push,
+    Pop,
+    Assign,
+}
+
+#[derive(Debug)]
+pub struct VariantAssign {
+    pub identifier: String,
+    pub value: Option<Value>,
+    pub variants: Vec<Value>,
+    pub operation: VariableAssignOperation,
+}
+
+#[derive(Debug)]
+pub struct Require {
+    pub condition: Option<Value>,
+    pub message: Option<Value>,
+}
+
+#[derive(Debug)]
+pub struct TuppleAssignment {
+    pub identifiers: Vec<VariableAST>,
+    pub value: Box<FunctionArm>,
+}
+
+#[derive(Debug)]
+pub enum ConditionType {
+    If,
+    ElIf,
+}
+
+#[derive(Debug)]
+pub struct If {
+    pub r#type: ConditionType,
+    pub condition: Option<Value>,
+    pub arm: Option<Vec<FunctionArm>>,
+}
+
+#[derive(Debug)]
+pub struct Conditionals {
+    pub condition: Option<Value>,
+    pub arm: Option<Vec<FunctionArm>>,
+    pub elif: Option<Vec<If>>,
+    pub el: Option<Vec<FunctionArm>>,
+}
+
+#[derive(Debug)]
+pub enum LoopType {
+    For,
+    While,
+}
+
+#[derive(Debug)]
+pub struct Assign {
+    pub left_operand: Value,
+    pub right_operand: Value,
+}
+
+#[derive(Debug)]
+pub struct Loop {
+    pub initiator: Option<VariableAST>,
+    pub condition: Value,
+    pub iterator: Option<Value>,
+    pub arms: Vec<FunctionArm>,
+    pub r#type: LoopType,
+}
+
+#[derive(Debug)]
+pub enum FunctionArm {
+    // VariableAssign(VariableAST),
+    // VariantAssign(VariantAssign),
+    Assign(Assign),
+    // FunctionCall(Value),
+    FunctionExecution,
+    Break,
+    Continue,
+    Loop(Loop),
+    TuppleAssignment(TuppleAssignment),
+    Context(Vec<FunctionArm>),
+    MemoryAssign(Value),
+    VariableIdentifier(VariableAST),
+    EventEmitter(Value),
+    If(If),
+    El(Option<Vec<FunctionArm>>),
+    Require(Require),
+    Conditionals(Conditionals),
+    Return(Value),
+    Delete(Value),
+    Revert(Option<Value>),
+    Assert(Value),
+    Scope(Vec<FunctionArm>),
+    None,
 }
 
 impl FunctionHeader {
@@ -77,6 +193,26 @@ impl FunctionHeader {
             size: None,
             var_name: None,
             var_visibility: None,
+        }
+    }
+}
+
+impl Conditionals {
+    pub fn new() -> Self {
+        Self {
+            condition: None,
+            arm: None,
+            elif: None,
+            el: None,
+        }
+    }
+}
+
+impl Require {
+    pub fn new() -> Self {
+        Self {
+            condition: None,
+            message: None,
         }
     }
 }

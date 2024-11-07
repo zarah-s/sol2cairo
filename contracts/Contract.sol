@@ -2,6 +2,9 @@
 pragma solidity ^0.8.24;
 
 library Name {
+    jane = brian[12][12][12];
+    // asd[12][12] = just;
+    ade.asd = a.b[].v.d;
         uint oi =1>=1&& !true?&1:1+=1;
         mapping (sd => mapping (address => uint) )  name;
         mapping (address => uint) name;
@@ -9,12 +12,52 @@ library Name {
 function ddd(uint[] storage osad,address payable owner) external Only(msg.sender) another  gasless returns(address memory payable[10] user,Layout.Pool memory pool)  {
         bytes public buffer = new bytes(2);
 
-}
+        require(1==1,C_error());
+        uint j;
+        {
+            bool i;
+        }
+       {
+         vic;
+        }
+
+chiii;}
     uint oi = (1 days).count(payable(address(jane)));
 
     constructor() owner()  oi() {
-
+if(true == true && false!=true){
+if(!true){
+asdfasd;asdfasd;asdf;
+}
+}else if(nottrue){
+    asdfa;
+if(oi){
+    asdfasd;
     }
+}else{
+    
+}
+    }
+
+        // Function that returns a function pointer
+    function getFunctionPointer() public view returns (function(uint) external pure returns (address)) {
+        return this.exampleFunction; // Return the pointer to `exampleFunction`
+    }
+
+      function getMapping() internal view returns (mapping(uint => address) storage) {
+        return myMapping;
+    }
+
+        // Function that takes a reference to a mapping in storage
+    function updateMapping(mapping(uint => address) storage sdf, uint key, address value) internal {
+        sdf.oi.[key] = value;
+    }
+
+    //     function updateBalances(KeyValue[] memory keyValueArray) public {
+    //     for (uint256 i = 0; i < keyValueArray.length; i++) {
+    //         balances[keyValueArray[i].key] = keyValueArray[i].value;
+    //     }
+    // }
     mapping(uint256 => function (uint256, uint256) external returns (uint256)) funcPointers;
 
  function executeFunctions(
@@ -27,10 +70,10 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
 
         }
         // Loop through the array and call each function
-        for (uint256 i = 0; i < funcArray.length; i++) {
+        // for (uint256 i = 0; i < funcArray.length; i++) {
         
-            results[i] = funcArray[i](a, b); // Execute each function pointer
-        }
+        //     results[i] = funcArray[i](a, b); // Execute each function pointer
+        // }
     }
 
     modifier name {
@@ -46,9 +89,61 @@ function ddd(uint[] storage osad,address payable owner) external Only(msg.sender
         uint256[] a,
         uint256 b
     ) external view returns (uint256) {
-        return func(a, b); // Calls the passed function pointer
-    oi}
 
+revert Err(string(abi.encodePacked([1,2,3])));
+        delete brian[msg.sender];
+        return func(a, b); // Calls the passed function pointer
+    oi;}
+
+event MyEvent(address indexed user, uint256 amount);
+event AnonymousEvent(address indexed user, uint256 amount) anonymous;
+
+function testCustomError(uint256 _withdrawAmount) public view {
+        uint256 bal = address(this).balance;
+        if (bal < _withdrawAmount) {
+            revert InsufficientBalance({
+                balance: bal,
+                withdrawAmount: _withdrawAmount
+            });
+(string("hello's"),uint(0),["as","sdfsd"]);
+            (string("0"));
+            (uint j,string memory oi,) = (uint(0),"sdf");
+
+            emit OII({asd:sdf});
+
+            assert(1==1&& 2>>3<1);
+        }
+    }
+
+
+     function loop() public {
+        i;
+        jdf();
+        j.str.sdf();
+        // for loop
+        for (uint256 i; i < 10; i++) {
+            if (i == 3) {
+                // Skip to next iteration with continue
+                continue;
+            }else if(true) {
+                break;
+            }else if(1==3%3){
+                console.log(1);
+            }else{
+                func();
+            }
+            if (i == 5) {
+                // Exit loop with break
+                break;
+            }
+        }
+
+        // while loop
+        uint256 j;
+        while (j < 10) {
+            j++;
+        }
+    }
 
   struct FunctionHolder {
         function (uint256, uint256) external returns (uint256) funcPointerStr;

@@ -741,13 +741,18 @@ fn seperate_variant_variants(
                             if let Some(_tkn) = find {
                                 match _tkn {
                                     Token::Gt => (),
-                                    _ => {
-                                        CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
+                                    _ => match terminator_type {
+                                        TerminationTypeContext::Function => {}
+                                        _ => {
+                                            CompilerError::SyntaxError(SyntaxError::MissingToken(
+                                                ";",
+                                            ))
                                             .throw_with_file_info(
                                                 &std::env::var(FILE_PATH).unwrap(),
                                                 _line_desc.line,
                                             );
-                                    }
+                                        }
+                                    },
                                 }
                             }
                         } else {
@@ -761,7 +766,10 @@ fn seperate_variant_variants(
                         }
                     }
                     if opened_braces_count == 1 {
-                        terminator_type = TerminationTypeContext::Variable
+                        match terminator_type {
+                            TerminationTypeContext::Function => {}
+                            _ => terminator_type = TerminationTypeContext::Variable,
+                        }
                     }
                 }
 
