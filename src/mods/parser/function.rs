@@ -1,6 +1,6 @@
 use crate::mods::ast::function::{
-    ArgRet, ArgType, ConditionType, FunctionArm, FunctionHeader, FunctionHeaderState, FunctionType,
-    If, Loop, LoopType, ModifierCall, Require, TuppleAssignment,
+    ArgRet, ArgType, Assign, ConditionType, Conditionals, FunctionArm, FunctionHeader,
+    FunctionHeaderState, FunctionType, If, Loop, LoopType, ModifierCall, Require, TuppleAssignment,
 };
 use crate::mods::ast::mapping::{Mapping, MappingAST, MappingHeader};
 use crate::mods::ast::variable::VariableAST;
@@ -42,6 +42,8 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
             }
         }
 
+        let mut conditionals: Option<Conditionals> = None;
+
         let _header = parse_function_header(function_header, line);
         let mut skipped_count = 0;
         let mut combined: Vec<Token> = Vec::new();
@@ -69,7 +71,12 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
                         if opened_scope == 1 && opened_context == 0 {
                             let arm = process_function_body(&combined, body.line);
 
-                            function_arms.push(arm);
+                            construct_conditional_statement(
+                                arm,
+                                body.line,
+                                &mut conditionals,
+                                &mut function_arms,
+                            );
 
                             combined.clear();
                         }
@@ -85,7 +92,12 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
                         if opened_context == 0 && opened_scope == 1 {
                             let arm = process_function_body(&combined, body.line);
 
-                            function_arms.push(arm);
+                            construct_conditional_statement(
+                                arm,
+                                body.line,
+                                &mut conditionals,
+                                &mut function_arms,
+                            );
                             combined.clear();
                         }
                     }
@@ -110,7 +122,12 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
                 &combined[..combined.len() - 1].to_vec(),
                 function_lexem.last().unwrap().line,
             );
-            function_arms.push(arm);
+            construct_conditional_statement(
+                arm,
+                function_lexem.last().unwrap().line,
+                &mut conditionals,
+                &mut function_arms,
+            );
             combined.clear();
         }
         println!("{:#?}", function_arms);
@@ -129,6 +146,56 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
             if stripped_tokens.last().unwrap() != &Token::SemiColon {
                 CompilerError::SyntaxError(SyntaxError::MissingToken(";"))
                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            if stripped_tokens.len() == 2 {
+                if _identifier == "_" {
+                    return FunctionArm::FunctionExecution;
+                }
+
+                return FunctionArm::MemoryAssign(parse_value(stripped_tokens[..1].to_vec(), line));
+            }
+
+            let equals_index = stripped_tokens
+                .iter()
+                .position(|pred| *pred == Token::Equals);
+            if equals_index.is_none() {
+                return FunctionArm::MemoryAssign(parse_value(
+                    stripped_tokens[..stripped_tokens.len() - 1].to_vec(),
+                    line,
+                ));
+            } else {
+                let find_next = stripped_tokens.get(equals_index.unwrap() + 1);
+                if find_next.is_none() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                        .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                }
+
+                match find_next.unwrap() {
+                    Token::Equals => {
+                        return FunctionArm::MemoryAssign(parse_value(
+                            stripped_tokens[..stripped_tokens.len() - 1].to_vec(),
+                            line,
+                        ))
+                    }
+                    _ => {
+                        let raw_left_operand = &stripped_tokens[..equals_index.unwrap()];
+                        let raw_right_operand = &stripped_tokens[equals_index.unwrap() + 1..];
+
+                        let left_operand = parse_value(raw_left_operand.to_vec(), line);
+                        let right_operand = parse_value(
+                            raw_right_operand[..raw_right_operand.len() - 1].to_vec(),
+                            line,
+                        );
+
+                        let assign_construct = Assign {
+                            left_operand,
+                            right_operand,
+                        };
+
+                        return FunctionArm::Assign(assign_construct);
+                    }
+                }
             }
         }
 
@@ -589,6 +656,7 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
                                 "Unprocessible entity for conditional statement",
                             ))
                             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                            unreachable!();
                         }
                     }
                 }
@@ -648,10 +716,12 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
             });
         }
 
-        _ => {}
+        _ => {
+            CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            unreachable!();
+        }
     }
-
-    return FunctionArm::None;
 }
 
 pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader {
@@ -1405,6 +1475,7 @@ fn prepare_function_body(raw_tokens: Vec<Token>, line: i32) -> Vec<FunctionArm> 
     let mut opened_context = 0;
     let mut opened_scope = 0;
     let mut result = Vec::new();
+    let mut conditionals: Option<Conditionals> = None;
 
     for token in &raw_tokens {
         combined.push(token.clone());
@@ -1418,7 +1489,10 @@ fn prepare_function_body(raw_tokens: Vec<Token>, line: i32) -> Vec<FunctionArm> 
                 opened_scope -= 1;
 
                 if opened_scope == 0 && opened_context == 0 {
-                    result.push(process_function_body(&combined, line));
+                    let arm = process_function_body(&combined, line);
+
+                    construct_conditional_statement(arm, line, &mut conditionals, &mut result);
+
                     combined.clear();
                 }
             }
@@ -1431,7 +1505,9 @@ fn prepare_function_body(raw_tokens: Vec<Token>, line: i32) -> Vec<FunctionArm> 
             }
             Token::SemiColon => {
                 if opened_context == 0 && opened_scope == 0 {
-                    result.push(process_function_body(&combined, line));
+                    let arm = process_function_body(&combined, line);
+
+                    construct_conditional_statement(arm, line, &mut conditionals, &mut result);
                     combined.clear();
                 }
             }
@@ -1448,12 +1524,77 @@ fn prepare_function_body(raw_tokens: Vec<Token>, line: i32) -> Vec<FunctionArm> 
     }
 
     if !combined.is_empty() {
-        result.push(process_function_body(
-            &combined[..combined.len()].to_vec(),
-            line,
-        ));
+        let arm = process_function_body(&combined[..combined.len()].to_vec(), line);
+        construct_conditional_statement(arm, line, &mut conditionals, &mut result);
+
         combined.clear();
     }
 
     result
+}
+
+fn construct_conditional_statement(
+    arm: FunctionArm,
+    line: i32,
+    conditionals: &mut Option<Conditionals>,
+    function_arms: &mut Vec<FunctionArm>,
+) {
+    match arm {
+        FunctionArm::If(_condition) => {
+            if let ConditionType::If = _condition.r#type {
+                if conditionals.is_some() {
+                    function_arms.push(FunctionArm::Conditionals(conditionals.take().unwrap()));
+                }
+                *conditionals = Some(Conditionals {
+                    arm: _condition.arm,
+                    el: None,
+                    condition: _condition.condition,
+                    elif: None,
+                })
+            } else {
+                if conditionals.is_none() {
+                    CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                        "Unexpected context in function declaration",
+                    ))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                }
+
+                if conditionals.as_mut().unwrap().elif.is_none() {
+                    conditionals.as_mut().unwrap().elif = Some(Vec::new());
+                }
+
+                conditionals
+                    .as_mut()
+                    .unwrap()
+                    .elif
+                    .as_mut()
+                    .unwrap()
+                    .push(If {
+                        r#type: ConditionType::ElIf,
+                        condition: _condition.condition,
+                        arm: _condition.arm,
+                    });
+            }
+        }
+
+        FunctionArm::El(_el) => {
+            if conditionals.is_none() {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    "Unexpected context in function declaration",
+                ))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            conditionals.as_mut().unwrap().el = _el;
+            function_arms.push(FunctionArm::Conditionals(conditionals.take().unwrap()));
+        }
+
+        _ => {
+            if conditionals.is_some() {
+                function_arms.push(FunctionArm::Conditionals(conditionals.take().unwrap()));
+            }
+
+            function_arms.push(arm);
+        }
+    }
 }

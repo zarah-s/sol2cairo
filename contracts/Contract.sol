@@ -50,7 +50,7 @@ if(oi){
 
         // Function that takes a reference to a mapping in storage
     function updateMapping(mapping(uint => address) storage sdf, uint key, address value) internal {
-        sdf[key] = value;
+        sdf.oi.[key] = value;
     }
 
     //     function updateBalances(KeyValue[] memory keyValueArray) public {
@@ -117,11 +117,20 @@ function testCustomError(uint256 _withdrawAmount) public view {
 
 
      function loop() public {
+        i;
+        jdf();
+        j.str.sdf();
         // for loop
         for (uint256 i; i < 10; i++) {
             if (i == 3) {
                 // Skip to next iteration with continue
                 continue;
+            }else if(true) {
+                break;
+            }else if(1==3%3){
+                console.log(1);
+            }else{
+                func();
             }
             if (i == 5) {
                 // Exit loop with break

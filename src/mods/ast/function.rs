@@ -135,6 +135,12 @@ pub enum LoopType {
 }
 
 #[derive(Debug)]
+pub struct Assign {
+    pub left_operand: Value,
+    pub right_operand: Value,
+}
+
+#[derive(Debug)]
 pub struct Loop {
     pub initiator: Option<VariableAST>,
     pub condition: Value,
@@ -145,9 +151,10 @@ pub struct Loop {
 
 #[derive(Debug)]
 pub enum FunctionArm {
-    VariableAssign(VariableAST),
-    VariantAssign(VariantAssign),
-    FunctionCall(Value),
+    // VariableAssign(VariableAST),
+    // VariantAssign(VariantAssign),
+    Assign(Assign),
+    // FunctionCall(Value),
     FunctionExecution,
     Break,
     Continue,
@@ -160,7 +167,7 @@ pub enum FunctionArm {
     If(If),
     El(Option<Vec<FunctionArm>>),
     Require(Require),
-    // Conditionals(Conditionals),
+    Conditionals(Conditionals),
     Return(Value),
     Delete(Value),
     Revert(Option<Value>),
