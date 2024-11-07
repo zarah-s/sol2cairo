@@ -173,6 +173,7 @@ pub enum FunctionArm {
     Revert(Option<Value>),
     Assert(Value),
     Scope(Vec<FunctionArm>),
+    Unchecked(Vec<FunctionArm>),
     None,
 }
 

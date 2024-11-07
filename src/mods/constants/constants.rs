@@ -1,6 +1,6 @@
 pub const DATA_TYPES: [&str; 6] = ["bytes", "uint", "int", "address", "string", "bool"];
 
-pub const KEYWORDS: [&str; 75] = [
+pub const KEYWORDS: [&str; 77] = [
     "contract",
     "mapping",
     "solidity",
@@ -11,6 +11,7 @@ pub const KEYWORDS: [&str; 75] = [
     "break",
     "continue",
     "library",
+    "assembly",
     "abstract",
     "indexed",
     "call",
@@ -49,6 +50,7 @@ pub const KEYWORDS: [&str; 75] = [
     "gasless",
     "tx",
     "msg",
+    "unchecked",
     "block",
     "pragma",
     "constructor",

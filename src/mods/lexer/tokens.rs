@@ -7,6 +7,8 @@ pub enum Token {
     Using,
     Continue,
     Break,
+    Unchecked,
+    Assembly,
     Block,
     Tx,
     This,

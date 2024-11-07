@@ -242,10 +242,8 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
 
             let raw_value = &stripped_tokens[1..stripped_tokens.len() - 1];
             if raw_value.len() == 0 {
-                CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                    "Unprocessible entity for require statement",
-                ))
-                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
             }
 
             let value = parse_value(raw_value.to_vec(), line);
@@ -505,7 +503,15 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
 
             let condition = parse_value(splitted_args[1].to_vec(), line);
             let iterator = Some(parse_value(splitted_args[2].to_vec(), line));
+            if stripped_tokens.len() < iteration + 2 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
 
+            if stripped_tokens[iteration + 1] != Token::OpenBraces {
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
             let raw_arms = &stripped_tokens[iteration + 2..stripped_tokens.len() - 1];
             let arms = prepare_function_body(raw_arms.to_vec(), line);
             let loop_construct = Loop {
@@ -559,7 +565,15 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
             }
 
             let condition = parse_value(splitted_args[0].to_vec(), line);
+            if stripped_tokens.len() < iteration + 2 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
 
+            if stripped_tokens[iteration + 1] != Token::OpenBraces {
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
             let raw_arms = &stripped_tokens[iteration + 2..stripped_tokens.len() - 1];
             let arms = prepare_function_body(raw_arms.to_vec(), line);
             let loop_construct = Loop {
@@ -630,6 +644,21 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
             }
         }
 
+        Token::Unchecked => {
+            if stripped_tokens.len() < 2 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+            if stripped_tokens[1] != Token::OpenBraces {
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            let arms =
+                prepare_function_body(stripped_tokens[2..stripped_tokens.len() - 1].to_vec(), line);
+            return FunctionArm::Unchecked(arms);
+        }
+
         Token::OpenBraces => {
             let raw_arms = &stripped_tokens[1..stripped_tokens.len() - 1];
             let arms = prepare_function_body(raw_arms.to_vec(), line);
@@ -665,6 +694,10 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
                     }
                 }
                 _ => {
+                    if stripped_tokens[1] != Token::OpenBraces {
+                        CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                            .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+                    }
                     let raw_arms = &stripped_tokens[2..stripped_tokens.len() - 1];
 
                     if raw_arms.len() > 0 {
@@ -711,6 +744,17 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
             }
             let raw_condition = &stripped_tokens[2..iteration];
             let condition = parse_value(raw_condition.to_vec(), line);
+            if stripped_tokens.len() < iteration + 2 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                    "Unprocessible entity for conditional statement",
+                ))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            if stripped_tokens[iteration + 1] != Token::OpenBraces {
+                CompilerError::SyntaxError(SyntaxError::MissingToken("{"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
             let raw_arms = &stripped_tokens[iteration + 2..stripped_tokens.len() - 1];
             let arms = prepare_function_body(raw_arms.to_vec(), line);
             return FunctionArm::If(If {
@@ -719,7 +763,9 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
                 arm: Some(arms),
             });
         }
-
+        Token::Assembly => {
+            panic!("{:?}", stripped_tokens);
+        }
         _ => {
             CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
