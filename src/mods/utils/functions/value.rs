@@ -179,7 +179,7 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
                 let nest = parse_value(raw_value.strip_spaces()[2..].to_vec(), line);
                 let variable_value = Value::IdentifierValue(IdentifierValue {
                     value: _identifier.to_string(),
-                    then: Some(Box::new(nest)),
+                    then: Some(Box::new(Value::Dot(Box::new(nest)))),
                 });
 
                 return variable_value;
@@ -509,7 +509,7 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
 
                     let variable_value = Value::KeywordValue(KeywordValue {
                         value: stripped_spaces[0].to_owned(),
-                        then: Some(Box::new(nest)),
+                        then: Some(Box::new(Value::Dot(Box::new(nest)))),
                     });
                     return variable_value;
                 } else {
@@ -879,10 +879,10 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
                                 if !method_data.is_empty() {
                                     match method_data[0] {
                                         Token::Dot => {
-                                            nested = parse_value(
+                                            nested = Value::Dot(Box::new(parse_value(
                                                 arg_data[arg_iteration + 2..].to_vec(),
                                                 line,
-                                            )
+                                            )))
                                         }
                                         Token::OpenSquareBracket => {
                                             nested = parse_value(
@@ -1201,12 +1201,11 @@ fn process_method_data_with_possible_fn_ptr_invocation(
     line: i32,
     method_data: &[Token],
 ) -> Value {
-    // let mut nested = Value::None;
     match method_data[0] {
-        Token::Dot => {
-            //   let   nested =
-            parse_value(raw_value.strip_spaces()[iteration + 2..].to_vec(), line)
-        }
+        Token::Dot => Value::Dot(Box::new(parse_value(
+            raw_value.strip_spaces()[iteration + 2..].to_vec(),
+            line,
+        ))),
         Token::OpenSquareBracket => {
             let nested = parse_value(raw_value.strip_spaces()[iteration + 1..].to_vec(), line);
             if let Value::ArrayValue(_value) = &nested {
@@ -1338,7 +1337,12 @@ fn process_contract_like_instance(
 
     if !method_data.is_empty() {
         match method_data[0] {
-            Token::Dot => nested = parse_value(stripped_spaces[iteration + 2..].to_vec(), line),
+            Token::Dot => {
+                nested = Value::Dot(Box::new(parse_value(
+                    stripped_spaces[iteration + 2..].to_vec(),
+                    line,
+                )))
+            }
             Token::OpenSquareBracket => {
                 nested = parse_value(stripped_spaces[iteration + 1..].to_vec(), line);
                 if let Value::ArrayValue(_value) = &nested {

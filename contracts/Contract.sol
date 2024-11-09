@@ -117,7 +117,6 @@ function testCustomError(uint256 _withdrawAmount) public view {
 
 
      function loop() public {
-        i;
         jdf();
         j.str.sdf();
         // for loop
@@ -149,6 +148,7 @@ function testCustomError(uint256 _withdrawAmount) public view {
             asdfsad;
         }
 
+        ii.23;
 
      
     }
