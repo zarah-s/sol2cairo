@@ -392,7 +392,9 @@ fn is_integer_literal(input: &Token) -> bool {
 fn detokenize(input: &Token) -> String {
     match input {
         Token::Contract => "contract".to_string(),
+        Token::Unchecked => "unchecked".to_string(),
         Token::Emit => "emit".to_string(),
+        Token::Assembly => "assembly".to_string(),
         Token::QMark => "?".to_string(),
         Token::Continue => "continue".to_string(),
         Token::Break => "break".to_string(),
@@ -526,6 +528,8 @@ fn tokenize(input: &str) -> Token {
         "revert" => Token::Revert,
         " " | "" => Token::Space,
         "emit" => Token::Emit,
+        "unchecked" => Token::Unchecked,
+        "assembly" => Token::Assembly,
         "break" => Token::Break,
         "continue" => Token::Continue,
         "?" => Token::QMark,

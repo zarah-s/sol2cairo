@@ -117,7 +117,6 @@ function testCustomError(uint256 _withdrawAmount) public view {
 
 
      function loop() public {
-        i;
         jdf();
         j.str.sdf();
         // for loop
@@ -143,6 +142,24 @@ function testCustomError(uint256 _withdrawAmount) public view {
         while (j < 10) {
             j++;
         }
+
+
+        unchecked {
+            asdfsad;
+        }
+
+        ii.23;
+
+     
+    }
+
+     function yul_let() public pure returns (uint256 z) {
+        // assembly() {
+        //     // Language used for assembly is called Yul
+        //     // Local variables
+        //     let x := 123
+        //     z := 456
+        // }
     }
 
   struct FunctionHolder {

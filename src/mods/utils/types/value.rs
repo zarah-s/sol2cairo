@@ -251,6 +251,7 @@ pub enum Value {
     ArrayValue(ArrayValue),
     IntegerValue(IntegerValue),
     BytesValue(BytesValue),
+    Dot(Box<Value>),
     AddressValue(AddressValue),
     BooleanValue(BooleanValue),
     FunctionValue(FunctionValue),
