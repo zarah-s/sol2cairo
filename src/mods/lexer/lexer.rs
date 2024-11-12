@@ -475,6 +475,7 @@ fn detokenize(input: &Token) -> String {
         Token::External => "external".to_string(),
         Token::Internal => "internal".to_string(),
         Token::Payable => "payable".to_string(),
+        Token::Unicode => "unicode".to_string(),
         Token::Memory => "memory".to_string(),
         Token::Uint(size) => {
             if let Some(_size) = size {
@@ -527,6 +528,7 @@ fn tokenize(input: &str) -> Token {
     match input {
         "revert" => Token::Revert,
         " " | "" => Token::Space,
+        "unicode" => Token::Unicode,
         "emit" => Token::Emit,
         "unchecked" => Token::Unchecked,
         "assembly" => Token::Assembly,
@@ -796,7 +798,7 @@ fn lex(input: &str) -> Vec<Token> {
             let chars = input.trim().chars().collect::<Vec<_>>();
             let next = chars.get(index + 1);
             if let Some(_next) = next {
-                if !_next.is_whitespace() && _next.is_alphabetic() {
+                if !_next.is_whitespace() && !SYMBOLS.contains(_next) {
                     combined_char.push(character);
                 } else {
                     combined_strings.push(format!("{}{}", combined_char.trim(), character));
@@ -814,7 +816,8 @@ fn lex(input: &str) -> Vec<Token> {
             }
         }
     }
-    assert!(combined_char.is_empty(), "Syntax Error: {}", combined_char);
+
+    assert!(combined_char.is_empty(), "Syntax Error: {}", input);
 
     for combined_string in combined_strings {
         lexems.push(combined_string.tokenize())

@@ -561,6 +561,28 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
 
             return variable_value;
         }
+
+        Token::Unicode => {
+            if raw_value.strip_spaces().len() != 2 {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            if !raw_value.strip_spaces()[1].is_string_literal() {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
+                    "Expecting string literal but got {}",
+                    raw_value.strip_spaces()[1].to_string()
+                )))
+                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+            let val = &raw_value.strip_spaces()[1].to_string()
+                [1..raw_value.strip_spaces()[1].to_string().len() - 1];
+
+            let variable_value = Value::Unicode(val.to_string());
+
+            return variable_value;
+        }
+
         Token::String => {
             let (cast_value, nested) = process_type_cast(raw_value, line);
 

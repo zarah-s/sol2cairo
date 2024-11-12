@@ -178,6 +178,10 @@ function (uint256, uint256) external returns (uint256)[20] public functionPointe
      bool oi = bool(true).concat();
      bool cd = (((((true)))));
 bytes hexs = hex"adfadfad";
+// Escaped - OK
+string constant s = "\
+";
+string unicode_  = unicode"👍👍👍👍👍👍👍";
      sdfd[] public jane=[1,2,3,4,5][get_random([1,2,3,4,54]).clone()];
 event Transfer(uind.asd[(((100)))] indexed,address payable[j[sdsd]] indexed ) anonymous;
 sd[2000_000] yo = new Toes[]((2000_000).add()).com();

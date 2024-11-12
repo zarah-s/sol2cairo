@@ -252,6 +252,7 @@ pub enum Value {
     IntegerValue(IntegerValue),
     BytesValue(BytesValue),
     Dot(Box<Value>),
+    Unicode(String),
     AddressValue(AddressValue),
     BooleanValue(BooleanValue),
     FunctionValue(FunctionValue),

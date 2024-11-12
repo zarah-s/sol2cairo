@@ -134,7 +134,7 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
         if conditionals.is_some() {
             function_arms.push(FunctionArm::Conditionals(conditionals.take().unwrap()));
         }
-        println!("{:#?}", function_arms);
+        // println!("{:#?}", function_arms);
     }
 }
 
