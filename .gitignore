@@ -2,5 +2,5 @@
 pydeC
 .env
 test/
-
+.DS_STORE
 Todo.md
