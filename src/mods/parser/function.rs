@@ -134,7 +134,6 @@ pub fn parse_functions(lexems: Vec<Vec<LineDescriptions<Vec<Token>>>>) {
         if conditionals.is_some() {
             function_arms.push(FunctionArm::Conditionals(conditionals.take().unwrap()));
         }
-        // println!("{:#?}", function_arms);
     }
 }
 
@@ -763,9 +762,7 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
                 arm: Some(arms),
             });
         }
-        Token::Assembly => {
-            panic!("{:?}", stripped_tokens);
-        }
+        Token::Assembly => parse_assembly(tokens),
         _ => {
             CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
@@ -1651,4 +1648,9 @@ fn construct_conditional_statement(
             function_arms.push(arm);
         }
     }
+}
+
+fn parse_assembly(tokens: &Vec<Token>) -> FunctionArm {
+    println!("{:#?}", tokens);
+    FunctionArm::None
 }

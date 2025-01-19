@@ -1024,9 +1024,31 @@ pub fn parse_value(raw_value: Vec<Token>, line: i32) -> Value {
                 },
             };
         }
+
+        Token::BackSlash => {
+            if raw_value.strip_spaces()[1..].is_empty() {
+                return Value::Escape(Box::new(None));
+            }
+            return Value::Escape(Box::new(Some(parse_value(
+                raw_value.strip_spaces()[1..].to_vec(),
+                line,
+            ))));
+        }
+
+        Token::Quotation => {
+            if *raw_value.strip_spaces().last().unwrap() != Token::Quotation {
+                CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!("Missing {}", "\"")))
+                    .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
+            }
+
+            return Value::Quotation(Box::new(parse_value(
+                raw_value.strip_spaces()[1..raw_value.strip_spaces().len() - 1].to_vec(),
+                line,
+            )));
+        }
         _other => {
             CompilerError::SyntaxError(SyntaxError::SyntaxError(&format!(
-                "Unprocessibleddd entity. {}",
+                "Unprocessible entity. {}",
                 raw_value.to_string()
             )))
             .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);

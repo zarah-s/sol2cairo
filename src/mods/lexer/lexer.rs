@@ -204,10 +204,10 @@ impl TStringExtension for &str {
 
 impl TStringExtension for char {
     fn tokenize(&self) -> Token {
-        tokenize(&self.to_string().as_str())
+        tokenize(&self.to_string())
     }
     fn lex(&self) -> Vec<Token> {
-        lex(&self.to_string().as_str())
+        lex(&self.to_string())
     }
 }
 
@@ -392,6 +392,7 @@ fn is_integer_literal(input: &Token) -> bool {
 fn detokenize(input: &Token) -> String {
     match input {
         Token::Contract => "contract".to_string(),
+        Token::BackSlash => "\\".to_string(),
         Token::Unchecked => "unchecked".to_string(),
         Token::Emit => "emit".to_string(),
         Token::Assembly => "assembly".to_string(),
@@ -529,6 +530,7 @@ fn tokenize(input: &str) -> Token {
         "revert" => Token::Revert,
         " " | "" => Token::Space,
         "unicode" => Token::Unicode,
+        "\\" => Token::BackSlash,
         "emit" => Token::Emit,
         "unchecked" => Token::Unchecked,
         "assembly" => Token::Assembly,
@@ -817,11 +819,28 @@ fn lex(input: &str) -> Vec<Token> {
         }
     }
 
-    assert!(combined_char.is_empty(), "Syntax Error: {}", input);
+    if !combined_char.is_empty() {
+        // panic!("{:?}", input);
+        for com in combined_char.chars() {
+            // println!("{:?}", com.tokenize());
+            if !com.tokenize().is_symbol() {
+                panic!("syntax errror");
+            }
+
+            combined_strings.push(com.to_string());
+        }
+        // combined_strings.push(combined_char.trim().to_string());
+        // combined_char.clear();
+    }
+
+    // assert!(combined_char.is_empty(), "Syntax Error: {}", input);
 
     for combined_string in combined_strings {
         lexems.push(combined_string.tokenize())
     }
 
+    // if !combined_char.is_empty() {
+    //     panic!("{:?}", lexems);
+    // }
     lexems
 }

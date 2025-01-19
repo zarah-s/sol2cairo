@@ -5,6 +5,7 @@ pub enum Token {
     Solidity,
     Library,
     Unicode,
+    BackSlash,
     Using,
     Continue,
     Break,
