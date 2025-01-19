@@ -12,6 +12,13 @@ pub enum ArgRet {
     Ret,
 }
 
+pub enum AssemblyState {
+    FunctionDeclaration,
+    VariableDeclaration,
+    VariableAssignment,
+    FunctionInvocation,
+}
+
 #[derive(Debug)]
 pub enum FunctionHeaderState {
     Keyword,

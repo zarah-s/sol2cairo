@@ -154,12 +154,12 @@ function testCustomError(uint256 _withdrawAmount) public view {
     }
 
      function yul_let() public pure returns (uint256 z) {
-        // assembly() {
-        //     // Language used for assembly is called Yul
-        //     // Local variables
-        //     let x := 123
-        //     z := 456
-        // }
+        assembly() {
+            // Language used for assembly is called Yul
+            // Local variables
+            let x := 123
+            z := 456
+        }
     }
 
   struct FunctionHolder {
@@ -169,15 +169,19 @@ function testCustomError(uint256 _withdrawAmount) public view {
     address yo = address(msg.sender);
 function (uint256, uint256) external returns (uint256)[20] public functionPointer;
 
-    address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
+    // address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
      bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();
      bytes bts = bytes(0x1);
-    jane owen
-     = string('can"t do').toBytes();
-     ad dfd =(((((((string((5)))).add()).def().oi()))));
+    // jane owen
+    //  = string('can"t do').toBytes();
+    //  ad dfd =(((((((string((5)))).add()).def().oi()))));
      bool oi = bool(true).concat();
      bool cd = (((((true)))));
 bytes hexs = hex"adfadfad";
+// Escaped - OK
+string constant s = "\
+";
+string unicode_  = unicode"👍👍👍👍👍👍👍";
      sdfd[] public jane=[1,2,3,4,5][get_random([1,2,3,4,54]).clone()];
 event Transfer(uind.asd[(((100)))] indexed,address payable[j[sdsd]] indexed ) anonymous;
 sd[2000_000] yo = new Toes[]((2000_000).add()).com();

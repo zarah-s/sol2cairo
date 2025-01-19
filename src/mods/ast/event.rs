@@ -11,9 +11,9 @@ pub struct EventAST {
 impl EventAST {
     pub fn new() -> Self {
         Self {
-            line: "".to_string(),
+            line: String::new(),
             anonymous: false,
-            identifier: "".to_string(),
+            identifier: String::new(),
             variants: None,
         }
     }

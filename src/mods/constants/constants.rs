@@ -1,9 +1,10 @@
 pub const DATA_TYPES: [&str; 6] = ["bytes", "uint", "int", "address", "string", "bool"];
 
-pub const KEYWORDS: [&str; 77] = [
+pub const KEYWORDS: [&str; 78] = [
     "contract",
     "mapping",
     "solidity",
+    "unicode",
     "hex",
     "this",
     "payable",
@@ -80,9 +81,9 @@ pub const KEYWORDS: [&str; 77] = [
     "anonymous",
 ];
 
-pub const SYMBOLS: [char; 26] = [
-    '+', '-', '/', '*', '(', ')', '[', ']', '{', '}', '>', '<', '.', '=', '!', '%', ';', '\'', '"',
-    ',', '|', '&', '~', '^', ':', '?',
+pub const SYMBOLS: [char; 27] = [
+    '+', '-', '/', '\\', '*', '(', ')', '[', ']', '{', '}', '>', '<', '.', '=', '!', '%', ';',
+    '\'', '"', ',', '|', '&', '~', '^', ':', '?',
 ];
 
 pub const INTEGER_SIZES: [u16; 32] = [

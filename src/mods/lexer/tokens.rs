@@ -4,6 +4,8 @@ pub enum Token {
     Contract,
     Solidity,
     Library,
+    Unicode,
+    BackSlash,
     Using,
     Continue,
     Break,
