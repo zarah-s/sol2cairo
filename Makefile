@@ -10,7 +10,7 @@ all: $(TARGET)
 $(TARGET): $(SRC)
 	rustc $< -o $@
 
-compile:
+c:
 	cargo run contracts/Contract.sol
 
 build: 

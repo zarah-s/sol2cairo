@@ -3,7 +3,6 @@ use std::{
     time::{self, SystemTime},
 };
 
-use mods::utils::functions::sub_main::compile_source_code;
 mod mods;
 
 #[tokio::main]
@@ -12,7 +11,7 @@ async fn main() {
     /* GET ENVIRONMENT ARGUMENTS */
     let args: Vec<String> = env::args().collect();
 
-    let _ = compile_source_code(args).await;
+    mods::utils::functions::sub_main::compile_source_code(args).await;
 
     let end_time = time::SystemTime::now().duration_since(SystemTime::UNIX_EPOCH);
     println!(
