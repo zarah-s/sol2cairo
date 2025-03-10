@@ -157,6 +157,12 @@ pub struct Loop {
 }
 
 #[derive(Debug)]
+pub struct FunctionPTR {
+    pub identifier: FunctionHeader,
+    pub value: Option<Value>,
+}
+
+#[derive(Debug)]
 pub enum FunctionArm {
     // VariableAssign(VariableAST),
     // VariantAssign(VariantAssign),
@@ -181,6 +187,7 @@ pub enum FunctionArm {
     Assert(Value),
     Scope(Vec<FunctionArm>),
     Unchecked(Vec<FunctionArm>),
+    FunctionPTR(FunctionPTR),
     None,
 }
 

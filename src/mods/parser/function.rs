@@ -1,6 +1,7 @@
 use crate::mods::ast::function::{
     ArgRet, ArgType, Assign, ConditionType, Conditionals, FunctionArm, FunctionHeader,
-    FunctionHeaderState, FunctionType, If, Loop, LoopType, ModifierCall, Require, TuppleAssignment,
+    FunctionHeaderState, FunctionPTR, FunctionType, If, Loop, LoopType, ModifierCall, Require,
+    TuppleAssignment,
 };
 use crate::mods::ast::mapping::{Mapping, MappingAST, MappingHeader};
 use crate::mods::ast::variable::VariableAST;
@@ -763,6 +764,30 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
             });
         }
         Token::Assembly => parse_assembly(tokens),
+        Token::Function => {
+            let equals_position = tokens.iter().position(|pred| *pred == Token::Equals);
+            if let Some(equals_index) = equals_position {
+                let lhs = &tokens[..equals_index];
+                let lhs_parse = parse_function_header(lhs.to_vec(), line);
+
+                let rhs = &tokens[equals_index + 1..&tokens.len() - 1];
+                let rhs_parse = parse_value(rhs.to_vec(), line);
+
+                let construct = FunctionArm::FunctionPTR(FunctionPTR {
+                    identifier: lhs_parse,
+                    value: Some(rhs_parse),
+                });
+
+                return construct;
+            }
+
+            let fn_ptr = parse_function_header(tokens[..tokens.len() - 1].to_vec(), line);
+            let construct = FunctionArm::FunctionPTR(FunctionPTR {
+                identifier: fn_ptr,
+                value: None,
+            });
+            return construct;
+        }
         _ => {
             CompilerError::SyntaxError(SyntaxError::SyntaxError("Unprocessible entity"))
                 .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
@@ -773,7 +798,6 @@ fn process_function_body(tokens: &Vec<Token>, line: i32) -> FunctionArm {
 
 pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHeader {
     let header_tokens = header_tokens.strip_spaces();
-
     if header_tokens.len() == 0 {
         CompilerError::SyntaxError(SyntaxError::SyntaxError(
             "Unprocessible entity for function declaration",
@@ -862,30 +886,53 @@ pub fn parse_function_header(header_tokens: Vec<Token>, line: i32) -> FunctionHe
                             function_header.var_name = Some(_identifier.to_string());
                             state = FunctionHeaderState::VarName;
                         } else {
-                            if header_tokens[0] == Token::Constructor {
-                                if let FunctionHeaderState::Args | FunctionHeaderState::Modifiers =
-                                    state
-                                {
-                                    process_modifier_call(
-                                        &header_tokens,
-                                        index,
-                                        line,
-                                        &mut function_header,
-                                        _identifier,
-                                        &mut pad,
-                                        &mut state,
-                                    );
-                                } else {
+                            match header_tokens[0] {
+                                Token::Constructor => {
+                                    if let FunctionHeaderState::Args
+                                    | FunctionHeaderState::Modifiers = state
+                                    {
+                                        process_modifier_call(
+                                            &header_tokens,
+                                            index,
+                                            line,
+                                            &mut function_header,
+                                            _identifier,
+                                            &mut pad,
+                                            &mut state,
+                                        );
+                                    } else {
+                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                            "Unprocessible entity for function declaration",
+                                        ))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+                                    }
+                                }
+
+                                Token::Function => match state {
+                                    FunctionHeaderState::Mutability | FunctionHeaderState::Args => {
+                                        function_header.var_name = Some(_identifier.to_string());
+                                    }
+
+                                    _ => {
+                                        CompilerError::SyntaxError(SyntaxError::SyntaxError(
+                                            "Unprocessibleddddd entity for function declaration",
+                                        ))
+                                        .throw_with_file_info(
+                                            &get_env_vars(FILE_PATH).unwrap(),
+                                            line,
+                                        );
+                                    }
+                                },
+
+                                _ => {
                                     CompilerError::SyntaxError(SyntaxError::SyntaxError(
                                         "Unprocessible entity for function declaration",
                                     ))
                                     .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                                 }
-                            } else {
-                                CompilerError::SyntaxError(SyntaxError::SyntaxError(
-                                    "Unprocessible entity for function declaration",
-                                ))
-                                .throw_with_file_info(&get_env_vars(FILE_PATH).unwrap(), line);
                             }
                         }
                     } else {
@@ -1362,7 +1409,6 @@ fn parse_args_types(
         ArgRet::Arg => match split.first().unwrap() {
             Token::Function => {
                 let function_header_arg = parse_function_header(split.to_vec(), line);
-
                 if function_header.arguments.is_none() {
                     function_header.arguments = Some(Vec::new());
                 }
@@ -1651,6 +1697,6 @@ fn construct_conditional_statement(
 }
 
 fn parse_assembly(tokens: &Vec<Token>) -> FunctionArm {
-    println!("{:#?}", tokens);
+    // println!("{:#?}", tokens);
     FunctionArm::None
 }

@@ -53,11 +53,11 @@ if(oi){
         sdf.oi.[key] = value;
     }
 
-    //     function updateBalances(KeyValue[] memory keyValueArray) public {
-    //     for (uint256 i = 0; i < keyValueArray.length; i++) {
-    //         balances[keyValueArray[i].key] = keyValueArray[i].value;
-    //     }
-    // }
+        function updateBalances(KeyValue[] memory keyValueArray) public {
+        for (uint256 i = 0; i < keyValueArray.length; i++) {
+            balances[keyValueArray[i].key] = keyValueArray[i].value;
+        }
+    }
     mapping(uint256 => function (uint256, uint256) external returns (uint256)) funcPointers;
 
  function executeFunctions(
@@ -69,15 +69,15 @@ if(oi){
         results = new uint256[](funcArray.length); // Create an array to store the results
 
         }
-        // Loop through the array and call each function
-        // for (uint256 i = 0; i < funcArray.length; i++) {
+        //  Loop through the array and call each function
+        for (uint256 i = 0; i < funcArray.length; i++) {
         
-        //     results[i] = funcArray[i](a, b); // Execute each function pointer
-        // }
+            results[i] = funcArray[i](a, b); // Execute each function pointer
+        }
     }
 
     modifier name {
-     _;   
+     _;
     }
 
 
@@ -153,6 +153,15 @@ function testCustomError(uint256 _withdrawAmount) public view {
      
     }
 
+    
+
+    function _castToPure(
+      function(bytes memory) internal view fnIn
+    ) internal pure returns (function(bytes32 memory) internal fnOut) {
+        assembly {
+            fnOut := fnIn
+        }
+    }
      function yul_let() public pure returns (uint256 z) {
         assembly() {
             // Language used for assembly is called Yul
@@ -162,12 +171,49 @@ function testCustomError(uint256 _withdrawAmount) public view {
         }
     }
 
+     address constant CONSOLE_ADDRESS =
+        0x000000000000000000636F6e736F6c652e6c6f67;
+
+    function _sendLogPayloadImplementation(bytes memory payload) internal view {
+        address consoleAddress = CONSOLE_ADDRESS;
+        /// @solidity memory-safe-assembly
+        assembly {
+            pop(
+                staticcall(
+                    gas(),
+                    consoleAddress,
+                    add(payload, 32),
+                    mload(payload),
+                    0,
+                    0
+                )
+            )
+        }
+    }
+
+
+
+ function _sendLogPayload(uint256 offset, uint256 size) private pure {
+        function(uint256, uint256) internal view fnIn = _sendLogPayloadView;
+        function(uint256, uint256) internal pure pureSendLogPayload;
+        /// @solidity memory-safe-assembly
+        assembly {
+            pureSendLogPayload := fnIn
+        }
+        pureSendLogPayload(offset, size);
+    }
+
+        function logAddress(address p0) internal pure {
+        _sendLogPayload(abi.encodeWithSignature("log(address)", p0));
+    }
+
   struct FunctionHolder {
         function (uint256, uint256) external returns (uint256) funcPointerStr;
 
     }
     address yo = address(msg.sender);
 function (uint256, uint256) external returns (uint256)[20] public functionPointer;
+// function (uint256, uint256) external returns (uint256)[20] public chhiiii;
 
     // address user = address   (address("sdd").arg().arch(1)).toString().toAddr();
      bytes user = bytes16(bytes32(0xa).toString(1000_000)).toBytes(16,user).oi();

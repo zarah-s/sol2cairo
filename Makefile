@@ -11,7 +11,7 @@ $(TARGET): $(SRC)
 	rustc $< -o $@
 
 c:
-	cargo run contracts/Contract.sol
+	export RUST_BACKTRACE=1 && cargo run contracts/Contract.sol
 
 build: 
 	cargo build --release
