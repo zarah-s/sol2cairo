@@ -1,6 +1,6 @@
 # Makefile
 
-TARGET = pydec
+TARGET = sol2cairo
 SRC = src/main.rs
 
 .PHONY: all clean
