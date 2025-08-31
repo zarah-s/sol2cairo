@@ -21,6 +21,3 @@ clean:
 
 t:
 	cargo test
-
-run: 
-	./target/release/pydeC contracts/Contract.sol
